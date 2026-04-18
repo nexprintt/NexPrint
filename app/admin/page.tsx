@@ -28,7 +28,10 @@ function formatRelativeTime(date: Date) {
   return date.toLocaleDateString("pt-BR");
 }
 
-export default async function AdminDashboard() {
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
+
+async function DashboardData() {
   // Buscar métricas reais do banco
   const ordersCount = await prisma.order.count();
   const totalFaturamento = await prisma.order.aggregate({
@@ -115,7 +118,7 @@ export default async function AdminDashboard() {
   ];
 
   return (
-    <div className="space-y-8">
+    <>
       {/* Grid de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((metric, i) => {
@@ -224,6 +227,26 @@ export default async function AdminDashboard() {
           </Link>
         </div>
       </div>
+    </>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-4 bg-white/50 rounded-[32px] border border-slate-100 shadow-sm animate-pulse">
+      <Loader2 className="w-12 h-12 text-brand-teal animate-spin mb-4" />
+      <h3 className="text-lg font-black text-brand-navy">Processando Relatórios</h3>
+      <p className="text-slate-400 text-sm font-medium">Buscando métricas e agregando faturamento...</p>
+    </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <div className="space-y-8">
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardData />
+      </Suspense>
     </div>
   );
 }
