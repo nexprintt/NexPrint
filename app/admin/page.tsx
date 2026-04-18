@@ -1,5 +1,6 @@
+"use client";
+
 import React from "react";
-import prisma from "@/lib/prisma";
 import { 
   ShoppingBag, 
   CreditCard, 
@@ -9,12 +10,16 @@ import {
   CheckCircle2,
   Package,
   TrendingUp,
-  ArrowUpRight
+  ArrowUpRight,
+  Loader2
 } from "lucide-react";
 import Link from "next/link";
+import useSWR from "swr";
+import { getDashboardData } from "./actions";
 
 // Helper para tempo relativo simples
-function formatRelativeTime(date: Date) {
+function formatRelativeTime(dateString: string | Date) {
+  const date = new Date(dateString);
   const now = new Date();
   const diffInMs = now.getTime() - date.getTime();
   const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
@@ -28,49 +33,25 @@ function formatRelativeTime(date: Date) {
   return date.toLocaleDateString("pt-BR");
 }
 
-import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
-
-async function DashboardData() {
-  // Buscar métricas reais do banco
-  const ordersCount = await prisma.order.count();
-  const totalFaturamento = await prisma.order.aggregate({
-    _sum: { totalAmount: true },
-    where: { paymentStatus: "PAID" }
-  });
-  
-  const pendingOrders = await prisma.order.count({
-    where: { status: "PENDING" }
+export default function AdminDashboard() {
+  const { data, isLoading } = useSWR('dashboard-data', () => getDashboardData(), {
+    revalidateOnFocus: true,
+    keepPreviousData: true
   });
 
-  // Buscar os 5 últimos alertas reais
-  const recentOrders = await prisma.order.findMany({
-    take: 5,
-    orderBy: { createdAt: "desc" },
-    include: {
-      items: {
-        include: {
-          item: true
-        }
-      }
-    }
-  });
+  if (isLoading && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 bg-white/50 rounded-[32px] border border-slate-100 shadow-sm animate-pulse">
+        <Loader2 className="w-12 h-12 text-brand-teal animate-spin mb-4" />
+        <h3 className="text-lg font-black text-brand-navy">Processando Relatórios</h3>
+        <p className="text-slate-400 text-sm font-medium">Buscando métricas e agregando faturamento...</p>
+      </div>
+    );
+  }
 
-  // Agregação para o Gráfico de Desempenho (Últimos 7 dias)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
-
-  const chartDataRaw = await prisma.order.findMany({
-    where: {
-      createdAt: { gte: sevenDaysAgo },
-      paymentStatus: "PAID"
-    },
-    select: {
-      totalAmount: true,
-      createdAt: true
-    }
-  });
+  const { ordersCount, totalFaturamento, pendingOrders, recentOrders, chartDataRaw, activeEventsCount } = data || {
+    ordersCount: 0, totalFaturamento: 0, pendingOrders: 0, recentOrders: [], chartDataRaw: [], activeEventsCount: 0
+  };
 
   // Montar objeto de dias para garantir que todos os dias apareçam no gráfico
   const dailyData: Record<string, number> = {};
@@ -80,8 +61,8 @@ async function DashboardData() {
     dailyData[d.toLocaleDateString("pt-BR", { weekday: "short" })] = 0;
   }
 
-  chartDataRaw.forEach(order => {
-    const day = order.createdAt.toLocaleDateString("pt-BR", { weekday: "short" });
+  chartDataRaw.forEach((order: any) => {
+    const day = new Date(order.createdAt).toLocaleDateString("pt-BR", { weekday: "short" });
     if (day in dailyData) {
       dailyData[day] += order.totalAmount;
     }
@@ -93,7 +74,7 @@ async function DashboardData() {
   const metrics = [
     { 
       label: "Faturamento Total", 
-      value: `R$ ${(totalFaturamento._sum.totalAmount || 0).toFixed(2)}`, 
+      value: `R$ ${(totalFaturamento || 0).toFixed(2)}`, 
       icon: CreditCard,
       color: "bg-emerald-50 text-emerald-600"
     },
@@ -111,14 +92,14 @@ async function DashboardData() {
     },
     { 
       label: "Eventos Ativos", 
-      value: await prisma.event.count({ where: { active: true } }), 
+      value: activeEventsCount, 
       icon: Users,
       color: "bg-purple-50 text-purple-600"
     },
   ];
 
   return (
-    <>
+    <div className="space-y-8">
       {/* Grid de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((metric, i) => {
@@ -181,7 +162,7 @@ async function DashboardData() {
                 <p className="text-sm font-bold text-slate-400">Nenhum pedido recente</p>
               </div>
             ) : (
-              recentOrders.map((order) => {
+              recentOrders.map((order: any) => {
                 // Cores por status
                 let statusColor = "bg-amber-50 text-amber-600";
                 let StatusIcon = Timer;
@@ -195,7 +176,7 @@ async function DashboardData() {
                 }
 
                 // Descrição inteligente de itens
-                const extraItems = order.items.map(i => i.item.name);
+                const extraItems = order.items.map((i: any) => i.item.name);
                 const description = extraItems.length > 0 
                   ? `Incluiu: ${extraItems.join(", ")}`
                   : "Solicitou crachá simples.";
@@ -227,26 +208,6 @@ async function DashboardData() {
           </Link>
         </div>
       </div>
-    </>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 bg-white/50 rounded-[32px] border border-slate-100 shadow-sm animate-pulse">
-      <Loader2 className="w-12 h-12 text-brand-teal animate-spin mb-4" />
-      <h3 className="text-lg font-black text-brand-navy">Processando Relatórios</h3>
-      <p className="text-slate-400 text-sm font-medium">Buscando métricas e agregando faturamento...</p>
-    </div>
-  );
-}
-
-export default function AdminDashboard() {
-  return (
-    <div className="space-y-8">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardData />
-      </Suspense>
     </div>
   );
 }

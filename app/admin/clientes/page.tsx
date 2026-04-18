@@ -1,81 +1,15 @@
+"use client";
+
 import React from "react";
-import prisma from "@/lib/prisma";
-import { Users, Search, Filter, Download, Mail, Phone } from "lucide-react";
-
-import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
-
-async function ClientesList() {
-  const orders = await prisma.order.findMany({
-    select: {
-      clientName: true,
-      congregation: true,
-      createdAt: true,
-    },
-    orderBy: {
-      clientName: "asc",
-    },
-  });
-
-  return (
-    <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-slate-50/50">
-            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">Participante</th>
-            <th className="px-6 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">Congregação</th>
-            <th className="px-6 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">Primeiro Pedido</th>
-            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 text-right">Contato</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((client, i) => (
-            <tr key={i} className="group hover:bg-slate-50/50 transition-all">
-              <td className="px-8 py-6 border-b border-slate-50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-navy/5 text-brand-navy flex items-center justify-center font-bold">
-                    {client.clientName.charAt(0)}
-                  </div>
-                  <span className="font-black text-brand-navy">{client.clientName}</span>
-                </div>
-              </td>
-              <td className="px-6 py-6 border-b border-slate-50">
-                <span className="text-sm font-bold text-slate-600">{client.congregation || "Nacional"}</span>
-              </td>
-              <td className="px-6 py-6 border-b border-slate-50">
-                <span className="text-sm text-slate-400">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
-              </td>
-              <td className="px-8 py-6 border-b border-slate-50 text-right">
-                <div className="flex justify-end gap-2 text-slate-300">
-                  <button className="p-2 hover:text-brand-teal transition-all"><Mail size={18} /></button>
-                  <button className="p-2 hover:text-brand-navy transition-all"><Phone size={18} /></button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
-      {orders.length === 0 && (
-        <div className="py-24 text-center">
-          <Users size={48} className="mx-auto text-slate-100 mb-4" />
-          <p className="text-slate-400 font-medium">Nenhum participante registrado ainda.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div className="bg-white rounded-3xl border border-slate-100 p-12 flex flex-col items-center justify-center space-y-4">
-      <Loader2 className="w-10 h-10 text-brand-teal animate-spin" />
-      <span className="text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Carregando Clientes...</span>
-    </div>
-  );
-}
+import { Users, Search, Filter, Download, Mail, Phone, Loader2 } from "lucide-react";
+import useSWR from "swr";
+import { getClientes } from "../actions";
 
 export default function ClientesPage() {
+  const { data: orders, isLoading } = useSWR('clientes-list', () => getClientes(), {
+    revalidateOnFocus: true,
+    keepPreviousData: true
+  });
 
   return (
     <div className="space-y-6">
@@ -101,9 +35,58 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      <Suspense fallback={<TableSkeleton />}>
-        <ClientesList />
-      </Suspense>
+      {isLoading && !orders ? (
+        <div className="bg-white rounded-3xl border border-slate-100 p-12 flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="w-10 h-10 text-brand-teal animate-spin" />
+          <span className="text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Carregando Clientes...</span>
+        </div>
+      ) : (
+        <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">Participante</th>
+                <th className="px-6 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">Congregação</th>
+                <th className="px-6 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">Primeiro Pedido</th>
+                <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 text-right">Contato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders?.map((client, i) => (
+                <tr key={i} className="group hover:bg-slate-50/50 transition-all">
+                  <td className="px-8 py-6 border-b border-slate-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-brand-navy/5 text-brand-navy flex items-center justify-center font-bold">
+                        {client.clientName.charAt(0)}
+                      </div>
+                      <span className="font-black text-brand-navy">{client.clientName}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 border-b border-slate-50">
+                    <span className="text-sm font-bold text-slate-600">{client.congregation || "Nacional"}</span>
+                  </td>
+                  <td className="px-6 py-6 border-b border-slate-50">
+                    <span className="text-sm text-slate-400">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
+                  </td>
+                  <td className="px-8 py-6 border-b border-slate-50 text-right">
+                    <div className="flex justify-end gap-2 text-slate-300">
+                      <button className="p-2 hover:text-brand-teal transition-all"><Mail size={18} /></button>
+                      <button className="p-2 hover:text-brand-navy transition-all"><Phone size={18} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {orders?.length === 0 && (
+            <div className="py-24 text-center">
+              <Users size={48} className="mx-auto text-slate-100 mb-4" />
+              <p className="text-slate-400 font-medium">Nenhum participante registrado ainda.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
