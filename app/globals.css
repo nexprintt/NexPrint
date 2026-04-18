@@ -150,7 +150,8 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-white border border-slate-100 shadow-[0_10px_40px_rgba(0, 0, 0, 0.03)];
+    @apply bg-white border border-slate-100;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
   }
 
   .shadow-antigravity {
