@@ -21,6 +21,8 @@ type ControlAction =
   | "suspend"
   | "status"
   | "printTest"
+  | "printImage"
+  | "printBatch"
   | "addStock";
 
 // POST: Executa comandos remotos na impressora

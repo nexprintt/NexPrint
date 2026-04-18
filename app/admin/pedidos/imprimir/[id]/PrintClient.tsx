@@ -32,11 +32,7 @@ export default function PrintClient({ order }: PrintClientProps) {
       // Idealmente queremos o tamanho real (1011x638)
       // O BadgeCanvas no preview usa um tamanho menor, mas para impressão vamos forçar a exportação
       
-      const base64Image = canvas.toDataURL({
-        format: 'png',
-        quality: 1,
-        multiplier: 2, // Extrai a imagem no tamanho real 300DPI (1010x638)
-      });
+      const base64Image = canvas.toDataURL("image/png", 1.0);
 
       const badgeOrientation = badgeConfig.orientation || order.template.orientation || "landscape";
 
