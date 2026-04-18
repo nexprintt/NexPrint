@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 
 import { ToastProvider } from "@/components/ui/Toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Providers from "@/components/Providers";
 
 export default function RootLayout({
   children,
@@ -43,7 +44,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <TooltipProvider>
           <ToastProvider>
-            {children}
+            <Providers>
+              {children}
+            </Providers>
           </ToastProvider>
         </TooltipProvider>
       </body>
