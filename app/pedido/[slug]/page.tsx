@@ -1,6 +1,7 @@
 import React from "react";
 import prisma from "@/lib/prisma";
 import BadgePedidoClient from "@/components/client/BadgePedidoClient";
+import CheckoutOrchestrator from "@/components/client/CheckoutOrchestrator";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +32,10 @@ export default async function Page({
     return notFound();
   }
 
-  // Pega o template ativo, ou o mais recente como fallback
-  const template =
-    event.templates.find((t) => t.isActive) || event.templates[0];
+  // Pega todos os templates ativos
+  const activeTemplates = event.templates.filter((t) => t.isActive);
 
-  if (!template) {
+  if (activeTemplates.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center p-10 bg-white rounded-3xl shadow-sm border border-slate-100 max-w-md">
@@ -52,8 +52,6 @@ export default async function Page({
       </div>
     );
   }
-
-  const config = JSON.parse(template.configJson);
 
   return (
     <div className="min-h-screen bg-[#020617] text-white selection:bg-brand-teal/20 overflow-x-hidden relative flex flex-col font-outfit">
@@ -86,11 +84,10 @@ export default async function Page({
           </p>
         </div>
 
-        {/* Componente principal */}
-        <BadgePedidoClient
+        {/* Componente principal de fluxo */}
+        <CheckoutOrchestrator
           event={event}
-          template={template}
-          config={config}
+          templates={activeTemplates}
         />
 
         {/* Botão de WhatsApp */}
