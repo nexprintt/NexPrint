@@ -132,6 +132,7 @@ export async function saveTemplate(data: {
     }
 
     revalidatePath("/admin/templates");
+    revalidatePath("/pedido/[slug]", "page");
     return { success: true };
   } catch (error: any) {
     console.error("CRITICAL SAVE TEMPLATE ERROR:", error);
@@ -152,10 +153,12 @@ export async function deleteTemplate(id: string) {
         data: { isActive: false },
       });
       revalidatePath("/admin/templates");
+      revalidatePath("/pedido/[slug]", "page");
       return { success: true, archived: true };
     } else {
       await prisma.badgeTemplate.delete({ where: { id } });
       revalidatePath("/admin/templates");
+      revalidatePath("/pedido/[slug]", "page");
       return { success: true, archived: false };
     }
   } catch (error) {
@@ -171,6 +174,7 @@ export async function toggleTemplateStatus(id: string, currentStatus: boolean) {
       data: { isActive: !currentStatus },
     });
     revalidatePath("/admin/templates");
+    revalidatePath("/pedido/[slug]", "page");
     return { success: true, isActive: updated.isActive };
   } catch (error) {
     console.error("Toggle Status Error:", error);
