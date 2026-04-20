@@ -204,33 +204,33 @@ export default function PedidoForm({
   return (
     <div className="w-full">
       {/* Indicador de Progresso — Estilo Aceternity / Glowing Premium */}
-      <div className="mb-14 max-w-sm mx-auto px-4 mt-2">
+      <div className="mb-10 sm:mb-14 w-full max-w-sm mx-auto px-0 sm:px-4 mt-2">
         <div className="flex items-center justify-between relative">
           {[1, 2, 3, 4].map((num) => {
             const isActive = step >= num;
             const isCurrent = step === num;
             return (
               <React.Fragment key={num}>
-                <div className="flex flex-col items-center z-10 transition-all duration-500">
+                <div className="flex flex-col items-center z-10 transition-all duration-500 flex-1">
                   <div
-                    className={`flex items-center justify-center w-14 h-14 rounded-full transition-all duration-700 ${
+                    className={`flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 rounded-full transition-all duration-700 mx-auto ${
                       isActive
                         ? "bg-[#00f2fe] text-[#020b12] shadow-[0_0_20px_rgba(0,242,254,0.4)]"
                         : "bg-transparent border border-white/5 text-slate-600"
                     }`}
                   >
                     {step > num ? (
-                      <span className="font-black text-xl font-outfit">{num}</span>
+                      <span className="font-black text-lg sm:text-xl font-outfit">{num}</span>
                     ) : (
-                      <span className="font-black text-xl font-outfit">{num}</span>
+                      <span className="font-black text-lg sm:text-xl font-outfit">{num}</span>
                     )}
                   </div>
-                  <span className={`mt-3 text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-500 ${isActive ? "text-[#00f2fe]" : "text-slate-500"}`}>
+                  <span className={`mt-2 sm:mt-3 text-[8.5px] sm:text-[11px] font-bold uppercase tracking-wider sm:tracking-[0.1em] transition-all duration-500 text-center ${isActive ? "text-[#00f2fe]" : "text-slate-500"}`}>
                     {num === 1 ? "Identidade" : num === 2 ? "Logística" : num === 3 ? "Acessórios" : "Checkout"}
                   </span>
                 </div>
                 {num < 4 && (
-                  <div className="flex-1 h-[1px] mb-8 mx-2 bg-white/5 relative overflow-hidden rounded-full font-outfit">
+                  <div className="flex-1 h-[1px] mb-6 sm:mb-8 mx-1 sm:mx-2 bg-white/5 relative overflow-hidden rounded-full font-outfit">
                     <motion.div 
                       initial={false}
                       animate={{ width: step > num ? "100%" : "0%" }}
@@ -610,10 +610,10 @@ export default function PedidoForm({
               </button>
               <div 
                 onClick={nextStep}
-                className="flex-1 h-16 bg-brand-teal hover:bg-brand-teal-dark text-brand-navy rounded-2xl flex items-center justify-between px-8 cursor-pointer shadow-[0_0_30px_rgba(0,229,192,0.3)] transition-all active:scale-[0.98]"
+                className="flex-1 h-16 bg-brand-teal hover:bg-brand-teal-dark text-brand-navy rounded-2xl flex items-center justify-between px-4 sm:px-8 cursor-pointer shadow-[0_0_30px_rgba(0,229,192,0.3)] transition-all active:scale-[0.98]"
               >
-                <span className="font-black text-base uppercase tracking-wider">Ver Pagamento</span>
-                <div className="flex items-center gap-5 border-l border-brand-navy/20 pl-5">
+                <span className="font-black text-sm sm:text-base uppercase tracking-wider">Ver Pagamento</span>
+                <div className="flex items-center gap-3 sm:gap-5 border-l border-brand-navy/20 pl-3 sm:pl-5">
                    <div className="text-right">
                       <span className="text-[10px] font-black opacity-60 uppercase block leading-none tracking-widest">Subtotal</span>
                       <span className="font-black text-xl leading-none tabular-nums">R$ {subtotal.toFixed(2)}</span>
@@ -642,7 +642,7 @@ export default function PedidoForm({
             </header>
 
             {/* Resumo Estilizado */}
-            <div className="bg-slate-900/60 border border-white/5 backdrop-blur-md rounded-[32px] p-8 text-white space-y-5 shadow-2xl relative overflow-hidden">
+            <div className="bg-slate-900/60 border border-white/5 backdrop-blur-md rounded-[32px] p-5 sm:p-8 text-white space-y-5 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-10">
                 <ShoppingBag size={80} />
               </div>
@@ -662,7 +662,7 @@ export default function PedidoForm({
               <div className="pt-6 border-t border-white/5 flex justify-between items-end">
                 <div className="relative z-10">
                   <span className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] block mb-2">Total a Pagar</span>
-                  <span className="text-4xl font-black text-white font-outfit tabular-nums text-glow-cyan">
+                  <span className="text-3xl sm:text-4xl font-black text-white font-outfit tabular-nums text-glow-cyan">
                     R$ {totalAmount.toFixed(2)}
                   </span>
                 </div>

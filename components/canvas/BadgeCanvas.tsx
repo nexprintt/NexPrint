@@ -78,8 +78,27 @@ export default function BadgeCanvas({
   const BASE_HEIGHT = 638;
   const isPortrait = orientation === "portrait";
 
-  const displayWidth = isPortrait ? 319 : 505;
-  const displayHeight = isPortrait ? 505 : 319;
+  // Responsividade absoluta para Mobile
+  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const isMobile = windowWidth <= 550;
+  // Margem generosa para o Canvas caber na tela sem transbordar (em celulares)
+  const maxAllowedWidth = isMobile ? windowWidth - 64 : 505; 
+  
+  const displayWidth = isPortrait 
+    ? Math.min(319, maxAllowedWidth) 
+    : Math.min(505, maxAllowedWidth);
+    
+  const displayHeight = isPortrait 
+    ? (displayWidth / 319) * 505 
+    : (displayWidth / 505) * 319;
 
   useEffect(() => {
     if (!canvasRef.current) return;

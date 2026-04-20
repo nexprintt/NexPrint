@@ -2,7 +2,7 @@ import React from "react";
 import LandingHero from "@/components/client/LandingHero";
 import prisma from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Home() {
   // Busca o primeiro evento ativo (ou o principal, ex: Congresso) e seus templates

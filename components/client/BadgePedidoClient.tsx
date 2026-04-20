@@ -195,7 +195,7 @@ export default function BadgePedidoClient({
         <div className="flex flex-col lg:flex-row gap-6 items-stretch min-h-[750px]">
           
           {/* Lado do Formulário */}
-          <div className="w-full lg:w-[45%] xl:w-[40%] form-card-dark py-8 px-6 md:p-10 rounded-[32px] md:rounded-[40px] shadow-2xl flex flex-col relative overflow-hidden group">
+          <div className="w-full lg:w-[45%] xl:w-[40%] form-card-dark py-6 px-4 md:p-10 rounded-[28px] md:rounded-[40px] shadow-2xl flex flex-col relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none group-hover:opacity-[0.07] transition-opacity">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-32 h-32"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
@@ -215,7 +215,7 @@ export default function BadgePedidoClient({
           </div>
 
           {/* Lado do Preview */}
-          <div className="w-full lg:w-[55%] xl:w-[60%] form-card-dark p-8 md:p-10 rounded-[32px] md:rounded-[40px] shadow-2xl flex items-center justify-center relative overflow-hidden">
+          <div className="w-full lg:w-[55%] xl:w-[60%] form-card-dark py-6 px-2 md:p-10 rounded-[28px] md:rounded-[40px] shadow-2xl flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-[#00f2fe]/5 via-transparent to-transparent pointer-events-none" />
             {badgePreview}
           </div>

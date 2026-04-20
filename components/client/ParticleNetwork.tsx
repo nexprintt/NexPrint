@@ -25,8 +25,8 @@ export default function ParticleNetwork() {
 
     const initParticles = () => {
       particles = [];
-      // Menos partículas no celular para garantir que rode liso (60fps)
-      const particleCount = window.innerWidth < 768 ? 40 : 100;
+      // Muito menos partículas para garantir 60fps lisinho sem travar a CPU e não atrasar transições
+      const particleCount = window.innerWidth < 768 ? 15 : 40;
       for (let i = 0; i < particleCount; i++) {
         particles.push({
           x: Math.random() * canvas.width,
@@ -84,8 +84,8 @@ export default function ParticleNetwork() {
           let dy = p.y - p2.y;
           let dist = Math.sqrt(dx * dx + dy * dy);
 
-          // Distância limite para conectar os pontos
-          const connectDist = window.innerWidth < 768 ? 100 : 150;
+          // Distância limite para conectar os pontos (reduzida para menos cálculos O(N²) por milissegundo)
+          const connectDist = window.innerWidth < 768 ? 60 : 120;
           if (dist < connectDist) {
             ctx.beginPath();
             // A opacidade da linha diminui conforme a distância aumenta (fade)
