@@ -204,37 +204,38 @@ export default function PedidoForm({
   return (
     <div className="w-full">
       {/* Indicador de Progresso — Estilo Aceternity / Glowing Premium */}
-      <div className="mb-12 max-w-2xl mx-auto px-4 mt-8">
+      <div className="mb-14 max-w-sm mx-auto px-4 mt-2">
         <div className="flex items-center justify-between relative">
           {[1, 2, 3, 4].map((num) => {
             const isActive = step >= num;
             const isCurrent = step === num;
             return (
               <React.Fragment key={num}>
-                <div className="flex flex-col items-center z-10">
+                <div className="flex flex-col items-center z-10 transition-all duration-500">
                   <div
-                    className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-500 ${
+                    className={`flex items-center justify-center w-14 h-14 rounded-full transition-all duration-700 ${
                       isActive
-                        ? "bg-brand-teal text-brand-navy shadow-[0_0_25px_rgba(0,229,192,0.5)]"
-                        : "bg-slate-900 border border-slate-800 text-slate-500"
-                    } ${isCurrent ? "scale-110 ring-4 ring-brand-teal/20" : ""}`}
+                        ? "bg-[#00f2fe] text-[#020b12] shadow-[0_0_20px_rgba(0,242,254,0.4)]"
+                        : "bg-transparent border border-white/5 text-slate-600"
+                    }`}
                   >
                     {step > num ? (
-                      <Check size={24} strokeWidth={4} />
+                      <span className="font-black text-xl font-outfit">{num}</span>
                     ) : (
-                      <span className="font-black text-lg">{num}</span>
+                      <span className="font-black text-xl font-outfit">{num}</span>
                     )}
                   </div>
-                  <span className={`mt-4 text-[9px] font-black uppercase tracking-[0.25em] transition-colors ${isActive ? "text-brand-teal drop-shadow-[0_0_8px_rgba(0,229,192,0.8)]" : "text-slate-600"}`}>
-                    {num === 1 ? "Identidade" : num === 2 ? "Logística" : num === 3 ? "Setup" : "Checkout"}
+                  <span className={`mt-3 text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-500 ${isActive ? "text-[#00f2fe]" : "text-slate-500"}`}>
+                    {num === 1 ? "Identidade" : num === 2 ? "Logística" : num === 3 ? "Acessórios" : "Checkout"}
                   </span>
                 </div>
                 {num < 4 && (
-                  <div className="flex-1 h-[2px] mb-8 mx-4 bg-slate-900 relative overflow-hidden rounded-full border-b border-white/5">
+                  <div className="flex-1 h-[1px] mb-8 mx-2 bg-white/5 relative overflow-hidden rounded-full font-outfit">
                     <motion.div 
                       initial={false}
                       animate={{ width: step > num ? "100%" : "0%" }}
-                      className="absolute inset-0 bg-brand-teal shadow-[0_0_15px_rgba(0,229,192,0.8)]"
+                      transition={{ duration: 0.8, ease: "circOut" }}
+                      className="absolute inset-0 bg-[#00f2fe]"
                     />
                   </div>
                 )}
@@ -269,71 +270,71 @@ export default function PedidoForm({
 
               <div className="space-y-8">
                 {membersCount === 0 && (
-                  <div className="p-6 rounded-3xl bg-slate-800/30 border border-white/5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block">Quantos identificadores?</label>
+                  <div className="p-6 rounded-3xl bg-[#09151c]/50 border border-white/5">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-4 block">Quantos identificadores?</label>
                     <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-1 bg-slate-900/60 rounded-2xl p-1.5 border border-white/5">
+                      <div className="flex items-center gap-2 bg-[#050b10] rounded-full p-2 border border-white/5">
                         <button 
                           onClick={() => setTotalCrachas(Math.max(1, totalCrachas - 1))} 
-                          className="w-12 h-12 rounded-xl text-slate-500 hover:bg-slate-800 transition-all flex items-center justify-center font-black text-xl"
+                          className="w-10 h-10 rounded-full text-slate-500 hover:bg-slate-800 transition-all flex items-center justify-center font-bold text-xl"
                         >
                           -
                         </button>
-                        <span className="text-xl font-black text-white w-10 text-center tabular-nums font-outfit">
+                        <span className="text-lg font-bold text-white w-8 text-center tabular-nums font-outfit">
                           {totalCrachas}
                         </span>
                         <button 
                            onClick={() => setTotalCrachas(Math.min(10, totalCrachas + 1))} 
-                           className="w-12 h-12 rounded-xl bg-brand-teal text-brand-navy flex items-center justify-center font-black text-xl hover:scale-105 transition-transform"
+                           className="w-10 h-10 rounded-full bg-[#00f2fe] text-[#020b12] flex items-center justify-center font-bold text-xl hover:scale-105 transition-transform"
                         >
                           +
                         </button>
                       </div>
-                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed max-w-[140px]">
+                      <p className="text-[9px] text-slate-500 font-medium leading-relaxed max-w-[140px]">
                         Você pode adicionar até 10 pessoas no mesmo pedido para economizar no frete.
                       </p>
                     </div>
                   </div>
                 )}
 
-                <header className="mb-4">
-                  <h2 className="text-3xl font-black text-white tracking-tighter font-outfit">
+                <header className="mb-2">
+                  <h2 className="text-[32px] font-black text-white tracking-tight font-outfit">
                     {membersCount === 0 ? "Dados do Titular" : `Identificador #${membersCount + 1}`}
                   </h2>
                 </header>
 
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome completo</label>
+                <div className="space-y-6">
+                  <div className="space-y-2.5">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
                     <input
                       type="text"
-                      placeholder="Ex: João da Silva"
-                      className="w-full px-5 py-4 rounded-2xl border border-transparent bg-slate-800/40 focus:border-brand-teal/50 outline-none transition-all font-semibold text-white placeholder:text-slate-600"
+                      placeholder="Ex: João Silva"
+                      className="w-full px-5 py-4 rounded-[16px] border border-white/5 bg-black/40 focus:border-[#00f2fe]/50 outline-none transition-all font-semibold text-white placeholder:text-slate-600 shadow-inner"
                       value={formData.clientName}
                       onChange={(e) => handleUpdate({ clientName: e.target.value })}
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Congregação</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2.5">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Congregação</label>
                       <input
                         type="text"
-                        placeholder="Ex: Central Itabira"
-                        className="w-full px-5 py-4 rounded-2xl border border-transparent bg-slate-800/40 focus:border-brand-teal/50 outline-none transition-all font-semibold text-white placeholder:text-slate-600"
+                        placeholder="Ex: Central"
+                        className="w-full px-5 py-4 rounded-[16px] border border-white/5 bg-black/40 focus:border-[#00f2fe]/50 outline-none transition-all font-semibold text-white placeholder:text-slate-600 shadow-inner"
                         value={formData.congregation}
                         onChange={(e) => handleUpdate({ congregation: e.target.value })}
                       />
                     </div>
                     
                     {membersCount === 0 && (
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Fone Celular</label>
+                      <div className="space-y-2.5">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Fone Celular</label>
                         <input
                           type="tel"
                           placeholder="(31) 99999-9999"
-                          className={`w-full px-5 py-4 rounded-2xl border bg-slate-800/40 outline-none transition-all font-semibold text-white placeholder:text-slate-600 ${
-                            formData.phone && !isPhoneValid ? "border-red-900 focus:border-red-500" : "border-transparent focus:border-brand-teal/50"
+                          className={`w-full px-5 py-4 rounded-[16px] border bg-black/40 outline-none transition-all font-semibold text-white placeholder:text-slate-600 shadow-inner ${
+                            formData.phone && !isPhoneValid ? "border-red-900 focus:border-red-500" : "border-white/5 focus:border-[#00f2fe]/50"
                           }`}
                           value={formData.phone}
                           onChange={(e) => handleUpdate({ phone: maskPhone(e.target.value) })}
@@ -343,7 +344,7 @@ export default function PedidoForm({
                   </div>
                 </div>
 
-                <div className="pt-8">
+                <div className="pt-6">
                   <motion.button
                     whileHover={canProceedStep1 ? { scale: 1.02 } : {}}
                     whileTap={canProceedStep1 ? { scale: 0.98 } : {}}
@@ -357,16 +358,16 @@ export default function PedidoForm({
                         }
                       }
                     }}
-                    className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all duration-300 ${
+                    className={`btn-submit-cyan w-full py-5 rounded-[24px] font-black text-lg flex items-center justify-center gap-3 transition-all duration-300 ${
                       canProceedStep1 
-                        ? "bg-brand-teal text-brand-navy shadow-[0_0_30px_rgba(0,229,192,0.3)] hover:shadow-[0_0_40px_rgba(0,229,192,0.5)] border border-brand-teal/50" 
-                        : "bg-slate-900/50 text-slate-500 cursor-not-allowed border border-white/5"
+                        ? "opacity-100" 
+                        : "opacity-30 cursor-not-allowed pointer-events-none grayscale"
                     }`}
                   >
                     {!isLastMemberForm 
-                      ? `Próximo Identificador` 
-                      : "Confirmar Dados"} 
-                    <ArrowRight size={20} className={canProceedStep1 ? "text-brand-navy" : "text-slate-600"} strokeWidth={3} />
+                      ? `PRÓXIMO IDENTIFICADOR` 
+                      : "PROSSEGUIR"} 
+                    <ArrowRight size={20} className="text-[#020b12]" strokeWidth={3} />
                   </motion.button>
                 </div>
               </div>
@@ -707,17 +708,19 @@ export default function PedidoForm({
             <div className="flex gap-4 pt-4">
               <button
                 onClick={prevStep}
-                className="w-14 h-14 flex items-center justify-center border border-slate-200 text-slate-400 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
+                className="w-16 h-16 flex items-center justify-center border border-white/10 text-slate-500 rounded-2xl hover:bg-slate-900 transition-all shadow-sm"
               >
-                <ArrowLeft size={20} />
+                <ArrowLeft size={24} strokeWidth={3} />
               </button>
               <button
                 onClick={() => onSubmit(formData)}
                 disabled={isSubmitting}
-                className="flex-1 h-14 bg-brand-teal hover:bg-brand-teal-dark text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 shadow-xl shadow-brand-teal/25 transition-all shadow-antigravity disabled:bg-slate-200"
+                className={`btn-submit-cyan flex-1 h-16 rounded-2xl font-black text-xl flex items-center justify-center gap-4 transition-all ${
+                  isSubmitting ? "opacity-50" : "text-brand-navy"
+                }`}
               >
                 {isSubmitting ? "Enviando..." : "Finalizar Pedido"}
-                {!isSubmitting && <CheckCircle2 size={22} strokeWidth={3} />}
+                {!isSubmitting && <CheckCircle2 size={24} strokeWidth={4} />}
               </button>
             </div>
           </motion.div>
@@ -725,14 +728,14 @@ export default function PedidoForm({
       </AnimatePresence>
 
       {/* WhatsApp Support Button */}
-      <div className="mt-12 flex justify-center">
+      <div className="mt-8 flex justify-center pb-4">
         <a 
           href="https://wa.me/5531999999999" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="px-6 py-3 rounded-full bg-slate-900/50 border border-white/5 text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all hover:text-white group"
+          className="px-6 py-2 rounded-full bg-[#09151c]/50 border border-white/5 text-slate-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all hover:text-white group"
         >
-          <div className="w-2 h-2 rounded-full bg-brand-teal shadow-[0_0_8px_rgba(0,229,192,0.8)]" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[#00f2fe] shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
           Fale com a gente pelo WhatsApp
         </a>
       </div>

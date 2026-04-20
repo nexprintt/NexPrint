@@ -5,40 +5,34 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --brand-navy: #0f172a;
-  --brand-teal: #00e5c0;
-  /* Ciano Brilhante / Mint Green como no print */
-  --brand-teal-dark: #00caab;
-  --brand-teal-light: #66efd9;
+  --brand-navy: #020b12; /* Darker background from reference */
+  --brand-teal: #00f2fe; /* Neon cyan from reference */
+  --brand-teal-dark: #00a8b3;
+  --brand-teal-light: #66f8ff;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* Sobrescrevendo para usar o Ciano Brilhante */
   --primary: oklch(0.79 0.17 185);
-  /* Ciano Limpo */
   --primary-foreground: oklch(0.145 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.95 0.04 264.376);
-  /* Azul muito suave para hover */
   --accent-foreground: oklch(0.488 0.243 264.376);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.928 0 0);
   --input: oklch(0.928 0 0);
   --ring: oklch(0.79 0.17 185);
-  /* ring ciano */
   --chart-1: oklch(0.79 0.17 185);
   --chart-2: oklch(0.85 0.12 185);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.875rem;
-  /* Bordas mais arredondadas para combinar com NexPrint */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -97,8 +91,6 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
-
-/* Forçamos o tema claro por enquanto para garantir a estética Clean solicitada */
 
 .dark {
   --background: oklch(0.145 0 0);
@@ -159,6 +151,47 @@
   }
 
   .text-glow-cyan {
-    text-shadow: 0 0 15px rgba(0, 229, 192, 0.4);
+    text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+  }
+  
+  .bg-cyan-glow {
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+  }
+  
+  .form-card-dark {
+    background: rgba(4, 11, 20, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255,255,255,0.02);
+  }
+
+  .btn-submit-cyan {
+    background: linear-gradient(90deg, #00f2fe 0%, #00e5c0 100%);
+    border: 1px solid #00f2fe;
+    color: #020b12; /* brand-navy para contraste máximo */
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 10px rgba(255,255,255,0.2);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-submit-cyan:hover {
+    box-shadow: 0 0 35px rgba(0, 242, 254, 0.6), inset 0 0 15px rgba(255,255,255,0.4);
+    transform: translateY(-2px) scale(1.02);
+    filter: brightness(1.1);
+  }
+
+  .constellation-bg {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: -1;
+    background-image: 
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 1px, transparent 1px),
+      radial-gradient(circle at 70% 60%, rgba(255,255,255,0.05) 1px, transparent 1px),
+      radial-gradient(circle at 40% 80%, rgba(255,255,255,0.05) 1px, transparent 1px),
+      radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 150px 150px;
+    opacity: 0.8;
   }
 }

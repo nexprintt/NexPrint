@@ -19,15 +19,7 @@ interface TemplateSelectorProps {
 
 export default function TemplateSelector({ templates, onSelect }: TemplateSelectorProps) {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight uppercase">
-          Escolha seu <span className="text-brand-teal">Modelo de Crachá</span>
-        </h2>
-        <p className="text-slate-400 max-w-2xl mx-auto font-medium">
-          Selecione o estilo que mais combina com você ou sua equipe. Cada modelo possui personalização exclusiva.
-        </p>
-      </div>
+    <div className="max-w-6xl mx-auto px-4">
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {templates.map((template, idx) => (

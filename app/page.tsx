@@ -5,11 +5,28 @@ import prisma from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  // Busca todos os eventos ativos no banco de dados
-  const events = await prisma.event.findMany({
-    where: { active: true },
-    orderBy: { createdAt: "desc" }
+  // Busca o primeiro evento ativo (ou o principal, ex: Congresso) e seus templates
+  const event = await prisma.event.findFirst({
+    where: { 
+      active: true,
+      templates: {
+        some: { isActive: true }
+      }
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      templates: {
+        where: { isActive: true },
+        include: {
+          items: {
+            include: {
+              item: true,
+            },
+          },
+        },
+      },
+    },
   });
 
-  return <LandingHero events={events} />;
+  return <LandingHero event={event} />;
 }

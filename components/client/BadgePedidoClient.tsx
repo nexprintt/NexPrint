@@ -155,7 +155,7 @@ export default function BadgePedidoClient({
       <div className="w-full flex-grow flex flex-col items-center">
         <div className="flex items-center gap-2 mb-8">
           <svg className="w-4 h-4 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-          <span className="text-[10px] font-black text-brand-teal uppercase tracking-[0.2em] font-outfit">
+          <span className="text-[11px] font-bold text-brand-teal uppercase tracking-[0.15em] font-outfit">
             Preview do {groupMembers.length + 1}º Crachá
           </span>
         </div>
@@ -190,12 +190,16 @@ export default function BadgePedidoClient({
 
   return (
     <>
-      <div className="max-w-[1300px] mx-auto">
+      <div className="w-full max-w-[1700px] mx-auto px-2 md:px-6">
         {/* Layout Simétrico App-Like - Flat Dark Style */}
-        <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+        <div className="flex flex-col lg:flex-row gap-6 items-stretch min-h-[750px]">
           
           {/* Lado do Formulário */}
-          <div className="w-full lg:w-[45%] xl:w-[40%] bg-[#0f172a]/90 p-8 md:p-10 rounded-[32px] border border-slate-800 shadow-xl flex flex-col">
+          <div className="w-full lg:w-[45%] xl:w-[40%] form-card-dark py-8 px-6 md:p-10 rounded-[32px] md:rounded-[40px] shadow-2xl flex flex-col relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none group-hover:opacity-[0.07] transition-opacity">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-32 h-32"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            
             <PedidoForm
               onDataChange={(data: any) => {
                 setName(data.clientName);
@@ -211,7 +215,8 @@ export default function BadgePedidoClient({
           </div>
 
           {/* Lado do Preview */}
-          <div className="w-full lg:w-[55%] xl:w-[60%] bg-[#0f172a]/90 p-8 md:p-10 rounded-[32px] border border-slate-800 shadow-xl flex items-center justify-center">
+          <div className="w-full lg:w-[55%] xl:w-[60%] form-card-dark p-8 md:p-10 rounded-[32px] md:rounded-[40px] shadow-2xl flex items-center justify-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#00f2fe]/5 via-transparent to-transparent pointer-events-none" />
             {badgePreview}
           </div>
 

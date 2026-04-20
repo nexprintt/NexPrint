@@ -2,6 +2,7 @@ import React from "react";
 import prisma from "@/lib/prisma";
 import BadgePedidoClient from "@/components/client/BadgePedidoClient";
 import CheckoutOrchestrator from "@/components/client/CheckoutOrchestrator";
+import ParticleNetwork from "@/components/client/ParticleNetwork";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -54,34 +55,27 @@ export default async function Page({
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white selection:bg-brand-teal/20 overflow-x-hidden relative flex flex-col font-outfit">
+    <div className="min-h-screen bg-brand-navy text-white selection:bg-brand-teal/20 overflow-x-hidden relative flex flex-col font-outfit">
       
-      {/* Elementos de Fundo Estilo Premium/Espacial */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Glows */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-brand-teal/10 blur-[120px] mix-blend-screen animate-pulse duration-10000" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-blue-900/15 blur-[120px] mix-blend-screen" />
-        {/* Grid animado e granulado */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_10%,#000_60%,transparent_100%)]" />
+      {/* Interactive Constellation Background */}
+      <ParticleNetwork />
+      
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[0]">
+        {/* Glows styled after reference */}
+        <div className="absolute top-[10%] left-[20%] w-[40%] h-[40%] rounded-full bg-brand-teal/5 blur-[120px] mix-blend-screen" />
+        <div className="absolute bottom-[20%] right-[10%] w-[50%] h-[50%] rounded-full bg-brand-teal/5 blur-[120px] mix-blend-screen" />
       </div>
 
-      <main className="relative z-10 w-full flex-grow px-4 py-8 md:py-12">
-        <div className="flex flex-col items-center mb-10 text-center">
-          {/* Logo Centralizado */}
-          <div className="flex items-center gap-1 font-black text-xl tracking-wide mb-3 relative z-10">
-            <span className="text-white">Nex</span>
-            <span className="text-brand-teal">Print</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-brand-teal ml-0.5 shadow-[0_0_10px_rgba(0,229,192,0.8)]" />
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase mb-2 relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-            {event.name}
-          </h1>
-          
-          <p className="mt-2 text-slate-400 text-xs font-medium max-w-xl">
-             Siga os passos abaixo para garantir seu crachá oficial em alta performance.
-          </p>
+      <main className="relative z-10 w-full flex-grow px-4 md:px-8 py-8 md:py-12 flex flex-col justify-center items-center">
+        {/* Header simplificado para botão de voltar (Alterar Modelo) */}
+        <div className="w-full max-w-[1600px] mb-8">
+           <a 
+             href="/" 
+             className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs font-black uppercase tracking-widest"
+           >
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+             Alterar Modelo
+           </a>
         </div>
 
         {/* Componente principal de fluxo */}
