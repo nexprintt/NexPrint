@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Event {
+  id        String          @id @default(cuid())
+  name      String
+  slug      String          @unique
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  templates BadgeTemplate[]
+  orders    Order[]
+}
+
+model BadgeTemplate {
+  id         String         @id @default(cuid())
+  eventId    String
+  name       String
+  bgImageUrl String
+  configJson String
+  basePrice  Float          @default(0)
+  isActive   Boolean        @default(false)
+  createdAt  DateTime       @default(now())
+  event      Event          @relation(fields: [eventId], references: [id])
+  orders     Order[]
+  items      TemplateItem[]
+}
+
+model Order {
+  id               String  @id @default(cuid())
+  eventId          String
+  badgeTemplateId  String
+  clientName       String
+  phone            String  @default("")
+  congregation     String?
+  photoUrl         String?
+  customConfigJson String?
+  status           String  @default("PENDING")
+  totalAmount      Float   @default(0)
+
+  // Novos campos para entrega e pagamento
+  isFromItabira   Boolean @default(true)
+  zipCode         String?
+  address         String?
+  number          String?
+  complement      String?
+  neighborhood    String?
+  city            String?
+  state           String?
+  shippingCost    Float   @default(0)
+  shippingService String? // "Correios - PAC", "Jadlog - Package"
+  paymentMethod   String  @default("CASH") // CASH, PIX
+  paymentStatus   String  @default("PENDING") // PENDING, PAID
+  groupId         String? // Agrupador de famílias / pacotes
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  template  BadgeTemplate @relation(fields: [badgeTemplateId], references: [id])
+  event     Event         @relation(fields: [eventId], references: [id])
+  items     OrderItem[]
+}
+
+model BadgeItem {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  stock       Int            @default(0)
+  imageUrl    String?
+  orderItems  OrderItem[]
+  templates   TemplateItem[]
+}
+
+model TemplateItem {
+  templateId String
+  itemId     String
+  isRequired Boolean       @default(false)
+  template   BadgeTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  item       BadgeItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([templateId, itemId])
+}
+
+model OrderItem {
+  id          String    @id @default(cuid())
+  orderId     String
+  itemId      String
+  quantity    Int       @default(1)
+  priceAtTime Float
+  item        BadgeItem @relation(fields: [itemId], references: [id])
+  order       Order     @relation(fields: [orderId], references: [id])
+}
+
+model PrintJob {
+  id         String   @id @default(cuid())
+  orderId    String
+  status     String   @default("QUEUED")
+  imageUrl   String?
+  errorCode  Int?
+  errorMsg   String?
+  copies     Int      @default(1)
+  duplex     Boolean  @default(false)
+  colorMode  String   @default("Vivid")
+  dpi        String   @default("300x600")
+  retryCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PrinterTelemetry {
+  id                 String   @id @default(cuid())
+  printerModel       String   @default("")
+  serialNumber       String   @default("")
+  firmwareVersion    String   @default("")
+  printerStatus      String   @default("Offline")
+  connectionType     String   @default("USB")
+  ribbonType         String   @default("")
+  ribbonRemaining    Int      @default(0)
+  ribbonPartNumber   String   @default("")
+  ribbonSerialNumber String   @default("")
+  totalCompleted     Int      @default(0)
+  totalPicked        Int      @default(0)
+  totalRejected      Int      @default(0)
+  totalLost          Int      @default(0)
+  currentCompleted   Int      @default(0)
+  currentPicked      Int      @default(0)
+  currentRejected    Int      @default(0)
+  cardsSinceClean    Int      @default(0)
+  cleaningsRun       Int      @default(0)
+  hopper1Status      String   @default("Unknown")
+  exceptionStatus    String   @default("Unknown")
+  colorMode          String   @default("Vivid")
+  cardsVirtualStock  Int      @default(0)
+  cardsPrintedSite   Int      @default(0)
+  lastUpdated        DateTime @updatedAt
+}

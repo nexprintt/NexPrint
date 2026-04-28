@@ -1,11 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import BadgeCanvas from "../canvas/BadgeCanvas";
-import PedidoForm from "./PedidoForm";
-import FeedbackModal from "../ui/FeedbackModal";
-import PixModal from "./PixModal"; // Novo import
 import { createOrder } from "@/app/pedido/[slug]/actions";
+import { Check, Package, ArrowRight, ArrowLeft } from "lucide-react";
+import BadgeCanvas from "../canvas/BadgeCanvas";
+import PreviewCarousel from "./PreviewCarousel";
+
+interface MemberData {
+  name: string;
+  congregation: string;
+  selectedItems: string[];
+}
 
 interface BadgePedidoClientProps {
   event: any;
@@ -13,244 +18,384 @@ interface BadgePedidoClientProps {
   config: any;
 }
 
-export default function BadgePedidoClient({
-  event,
-  template,
-  config,
-}: BadgePedidoClientProps) {
-  const [name, setName] = useState("");
-  const [congregation, setCongregation] = useState("");
-  const [photoUrl] = useState<string | null>(null);
+// mainStep: "init" → "members" → "summary" → "preview"
+// memberSubStep 1 = dados, 2 = acessórios
+
+export default function BadgePedidoClient({ event, template, config }: BadgePedidoClientProps) {
+  const mandatoryItemIds: string[] =
+    template.items?.filter((ti: any) => ti.isRequired)?.map((ti: any) => ti.itemId) ?? [];
+  const accessoryItems: any[] = template.items ?? [];
+
+  // ── estado global ──────────────────────────────────────
+  const [mainStep, setMainStep] = useState<"init" | "members" | "summary" | "preview">("init");
+  const [phone, setPhone] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [localConfig, setLocalConfig] = useState(config);
+  // ── membros já confirmados ──────────────────────────────
+  const [members, setMembers] = useState<MemberData[]>([]);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [pixModalOpen, setPixModalOpen] = useState(false);
-  const [orderAmount, setOrderAmount] = useState(0);
+  // ── estado do membro atual ──────────────────────────────
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [memberSubStep, setMemberSubStep] = useState<1 | 2>(1);
+  const [curName, setCurName] = useState("");
+  const [curCong, setCurCong] = useState("");
+  const [curItems, setCurItems] = useState<string[]>([...mandatoryItemIds]);
 
-  const [modal, setModal] = useState<{
-    type: "success" | "error";
-    title: string;
-    message: string;
-  }>({
-    type: "success",
-    title: "",
-    message: "",
-  });
+  // ── helpers ─────────────────────────────────────────────
+  const maskPhone = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 2) return d.length ? `(${d}` : "";
+    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+  const isPhoneValid = phone.replace(/\D/g, "").length === 11;
 
-  const [groupMembers, setGroupMembers] = useState<any[]>([]);
-
-  const handleAddMember = (memberData: any) => {
-    // Adiciona o membro atual à lista com sua configuração de crachá específica
-    setGroupMembers(prev => [...prev, {
-      clientName: memberData.clientName,
-      congregation: memberData.congregation,
-      photoUrl: memberData.photoUrl,
-      items: memberData.items,
-      customConfigJson: JSON.stringify(localConfig)
-    }]);
-
-    // Feedback visual
-    setModal({
-      type: "success",
-      title: "✨ Membro Adicionado!",
-      message: `${memberData.clientName} foi adicionado à sua família. Agora você pode cadastrar o próximo crachá ou ir para o pagamento.`,
-    } as any);
-    setModalOpen(true);
-
-    // Reseta o nome para o preview ficar limpo para o próximo
-    setName("");
+  const toggleItem = (itemId: string) => {
+    const ti = accessoryItems.find((t) => t.itemId === itemId);
+    if (ti?.isRequired) return;
+    const adding = !curItems.includes(itemId);
+    let next = adding ? [...curItems, itemId] : curItems.filter((i) => i !== itemId);
+    if (adding && ti?.exclusiveWith) {
+      const ex = ti.exclusiveWith.split(",").filter(Boolean);
+      next = next.filter((id) => !ex.includes(id));
+    }
+    setCurItems(next);
   };
 
-  const openWhatsapp = () => {
-    const phone = "553173211332";
-    const text = encodeURIComponent(`Olá! Acabei de fazer um pedido de crachá no NexPrint para o evento: ${event.name}.\n\n- Nome: ${name}\n- Congregação: ${congregation}\n\n* Estou enviando o comprovante do pagamento.`);
-    window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
+  const memberTotal = (m: MemberData) => {
+    const base = template.basePrice ?? 0;
+    const extras = accessoryItems
+      .filter((ti) => m.selectedItems.includes(ti.itemId) && !ti.isRequired)
+      .reduce((s: number, ti: any) => s + (ti.item.price ?? 0), 0);
+    return base + extras;
+  };
+  const grandTotal = () => members.reduce((s, m) => s + memberTotal(m), 0);
+
+  // ── navegação entre membros ─────────────────────────────
+  const startMemberFlow = () => {
+    setMembers([]);
+    setCurrentIdx(0);
+    setCurName(""); setCurCong(""); setCurItems([...mandatoryItemIds]);
+    setMemberSubStep(1);
+    setMainStep("members");
   };
 
+  const goToMemberData = () => setMemberSubStep(1);
+  const goToMemberAccessories = () => setMemberSubStep(2);
 
-  const handleSubmit = async (formData: any) => {
-    setIsSubmitting(true);
+  const confirmCurrentMember = () => {
+    const saved: MemberData = { name: curName, congregation: curCong, selectedItems: [...curItems] };
+    const newMembers = [...members, saved];
+    setMembers(newMembers);
+    if (currentIdx + 1 < quantity) {
+      setCurrentIdx(currentIdx + 1);
+      setCurName(""); setCurCong(""); setCurItems([...mandatoryItemIds]);
+      setMemberSubStep(1);
+    } else {
+      setMainStep("summary");
+    }
+  };
 
-    // 1. MONTAR O LOTE FINAL (O que está no form agora + o que já estava na lista)
-    const currentMemberFull = {
-      clientName: formData.clientName,
-      congregation: formData.congregation,
-      photoUrl: formData.photoUrl,
-      items: formData.items,
-      customConfigJson: JSON.stringify(localConfig)
-    };
+  const goBackToPrevMember = () => {
+    const prevIdx = currentIdx - 1;
+    const prev = members[prevIdx];
+    setMembers(members.slice(0, prevIdx));
+    setCurrentIdx(prevIdx);
+    setCurName(prev.name); setCurCong(prev.congregation); setCurItems([...prev.selectedItems]);
+    setMemberSubStep(2);
+  };
 
-    const allMembers = [...groupMembers, currentMemberFull];
+  const goBackFromSummary = () => {
+    const lastIdx = quantity - 1;
+    const last = members[lastIdx];
+    setMembers(members.slice(0, lastIdx));
+    setCurrentIdx(lastIdx);
+    setCurName(last.name); setCurCong(last.congregation); setCurItems([...last.selectedItems]);
+    setMemberSubStep(2);
+    setMainStep("members");
+  };
 
-    // 2. CALCULAR TOTAL DO GRUPO
-    const basePrice = template.basePrice || 0;
-    const requiredItemIds = new Set(template.items?.filter((ti: any) => ti.isRequired).map((ti: any) => ti.itemId) || []);
-
-    let subtotalGeral = 0;
-    allMembers.forEach(m => {
-      // Base do crachá
-      subtotalGeral += basePrice;
-      // Itens Extras de cada cada crachá
-      const extras = m.items.filter((id: string) => !requiredItemIds.has(id)).reduce((acc: number, id: string) => {
-        const ti = template.items.find((i: any) => i.itemId === id);
-        return acc + (ti?.item?.price || 0);
-      }, 0);
-      subtotalGeral += extras;
+  // ── submit ──────────────────────────────────────────────
+  const openWhatsapp = (allMembers: MemberData[]) => {
+    const num = "553173211332";
+    let txt = `*NOVO PEDIDO - NEXPRINT*\n\n*Evento:* ${event.name}\n*Telefone:* ${phone}\n*Pagamento:* ${paymentMethod === "PIX" ? "PIX" : "Dinheiro"}\n\n`;
+    allMembers.forEach((m, i) => {
+      const extras = accessoryItems.filter((ti) => m.selectedItems.includes(ti.itemId) && !ti.isRequired);
+      txt += `*Crachá ${i + 1}:* ${m.name}${m.congregation ? ` (${m.congregation})` : ""}\n`;
+      if (extras.length) txt += `  Acessórios: ${extras.map((ti: any) => ti.item.name).join(", ")}\n`;
+      txt += `  Valor: R$ ${memberTotal(m).toFixed(2)}\n\n`;
     });
+    txt += `*TOTAL: R$ ${grandTotal().toFixed(2)}*`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(txt)}`, "_blank");
+    setTimeout(() => { window.location.href = "/"; }, 1500);
+  };
 
-    const totalFinal = subtotalGeral + (formData.shippingCost || 0);
-    setOrderAmount(totalFinal);
-
-    // 3. ENVIAR PARA O BACKEND
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
     const result = await createOrder({
       eventId: event.id,
       badgeTemplateId: template.id,
-      phone: formData.phone, // Celular único do responsável
-      members: allMembers,
-
-      // Dados de Entrega (Do último formulário preenchido)
-      isFromItabira: formData.isFromItabira,
-      zipCode: formData.zipCode,
-      address: formData.address,
-      number: formData.number,
-      complement: formData.complement,
-      neighborhood: formData.neighborhood,
-      city: formData.city,
-      state: formData.state,
-      shippingCost: formData.shippingCost,
-      shippingService: formData.shippingService,
-      paymentMethod: formData.paymentMethod,
+      phone,
+      members: members.map((m) => ({
+        clientName: m.name,
+        congregation: m.congregation,
+        photoUrl: null,
+        items: m.selectedItems,
+        customConfigJson: template.configJson,
+      })),
+      isFromItabira: true,
+      zipCode: "", address: "", number: "", complement: "",
+      neighborhood: "", city: "Itabira", state: "MG",
+      shippingCost: 0, shippingService: "Retirada",
+      paymentMethod,
     } as any);
 
     if (result.success) {
-      if (formData.paymentMethod === "PIX") {
-        setPixModalOpen(true);
-      } else {
-        setModal({
-          type: "success",
-          title: "✅ Pedidos Concluídos!",
-          message:
-            `Recebemos os ${allMembers.length} crachás da sua família com sucesso! \n\nClique abaixo para nos avisar no WhatsApp.`,
-          actionLabel: "Avisar no WhatsApp",
-          onAction: openWhatsapp
-        } as any);
-        setModalOpen(true);
-      }
+      openWhatsapp(members);
     } else {
-      setModal({
-        type: "error",
-        title: "Ops! Ocorreu um problema",
-        message: result.error || "Não foi possível confirmar o pedido.",
-      } as any);
-      setModalOpen(true);
+      alert("Erro ao salvar o pedido: " + (result.error ?? "Tente novamente."));
     }
     setIsSubmitting(false);
   };
 
-  // Componente do preview do crachá (reutilizado em ambos os layouts)
-  const badgePreview = (
-    <div className="flex flex-col min-h-full h-full w-full justify-start pt-6">
-      <div className="w-full flex-grow flex flex-col items-center">
-        <div className="flex items-center gap-2 mb-8">
-          <svg className="w-4 h-4 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-          <span className="text-[11px] font-bold text-brand-teal uppercase tracking-[0.15em] font-outfit">
-            Preview do {groupMembers.length + 1}º Crachá
-          </span>
-        </div>
+  // ── renderização ─────────────────────────────────────────
+  return (
+    <div className="w-full max-w-2xl mx-auto bg-white rounded-3xl p-6 md:p-10 shadow-xl border border-slate-200">
 
-        {/* Crachá Simples e Elegante */}
-        <div className="relative mx-auto rounded-[32px] overflow-hidden shadow-2xl">
-          <BadgeCanvas
-            name={name}
-            congregation={congregation}
-            photoUrl={photoUrl}
-            bgImageUrl={template.bgImageUrl}
-            config={localConfig}
-            interactive={true}
-            lockVertical={true}
-            onUpdateConfig={(newConfig: any) => setLocalConfig(newConfig)}
-          />
-        </div>
+      {/* ── STEP INIT ── */}
+      {mainStep === "init" && (
+        <div className="space-y-8">
+          <div className="text-center">
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-2">Seu Pedido</h2>
+            <p className="text-lg text-slate-500">Vamos começar com as informações básicas.</p>
+          </div>
 
-        <div className="mt-auto w-full pt-10">
-          <div className="p-4 bg-[#1a2235]/60 border border-white/5 rounded-2xl flex items-start gap-4">
-            <div className="pt-0.5">
-               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-teal"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2v1"/><path d="M12 5a7 7 0 0 1 7 7c0 2.22-1.18 4.25-3 5.37V18H8v-.63C6.18 16.25 5 14.22 5 12a7 7 0 0 1 7-7Z"/></svg>
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <label className="text-lg font-bold text-slate-700">Telefone / WhatsApp</label>
+              <input type="tel" placeholder="(31) 99999-9999"
+                className={`w-full px-6 py-5 text-xl rounded-2xl border-2 outline-none transition-colors font-bold text-slate-900 bg-slate-50 ${phone && !isPhoneValid ? "border-red-400" : "border-slate-200 focus:border-brand-teal"}`}
+                value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} />
             </div>
-            <div className="text-xs font-medium text-slate-400">
-              <strong className="text-white">Dica de Especialista:</strong> Arraste os elementos no crachá para personalizar a posição. O que você vê é exatamente o que será impresso.
+
+            <div className="space-y-3">
+              <label className="text-lg font-bold text-slate-700">Quantos crachás quer fazer?</label>
+              <div className="flex items-center gap-6 bg-slate-50 border-2 border-slate-200 p-4 rounded-2xl">
+                <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center text-3xl font-black text-slate-600 hover:bg-slate-300 transition-colors">-</button>
+                <span className="flex-1 text-center text-4xl font-black text-slate-900">{quantity}</span>
+                <button type="button" onClick={() => setQuantity(Math.min(10, quantity + 1))}
+                  className="w-16 h-16 rounded-full bg-brand-teal flex items-center justify-center text-3xl font-black text-slate-900 hover:opacity-80 transition-colors">+</button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-lg font-bold text-slate-700">Forma de Pagamento</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={() => setPaymentMethod("PIX")}
+                  className={`p-4 md:p-6 rounded-2xl border-4 font-black text-lg md:text-xl transition-all ${paymentMethod === "PIX" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-100 text-slate-500 hover:bg-slate-50"}`}>PIX</button>
+                <button onClick={() => setPaymentMethod("CASH")}
+                  className={`p-4 md:p-6 rounded-2xl border-4 font-black text-lg md:text-xl transition-all ${paymentMethod === "CASH" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-100 text-slate-500 hover:bg-slate-50"}`}>DINHEIRO</button>
+              </div>
             </div>
           </div>
+
+          <button disabled={!isPhoneValid} onClick={startMemberFlow}
+            className={`w-full py-5 md:py-6 rounded-2xl font-black text-xl md:text-2xl flex items-center justify-center gap-3 md:gap-4 transition-all ${isPhoneValid ? "bg-brand-teal text-slate-900 hover:scale-[1.02] shadow-xl" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}>
+            Preencher os Crachás <ArrowRight size={28} className="shrink-0" />
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* ── STEP MEMBERS ── */}
+      {mainStep === "members" && (
+        <div className="space-y-6">
+          {/* barra de progresso */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Crachá {currentIdx + 1} de {quantity}</span>
+            <div className="flex gap-1">
+              {Array.from({ length: quantity }).map((_, i) => (
+                <div key={i} className={`h-2 rounded-full transition-all ${i < currentIdx ? "w-8 bg-brand-teal" : i === currentIdx ? "w-8 bg-brand-teal/40" : "w-2 bg-slate-200"}`} />
+              ))}
+            </div>
+          </div>
+
+          {/* SUB 1: DADOS */}
+          {memberSubStep === 1 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-1">
+                  {currentIdx === 0 ? "Seus Dados" : `Crachá #${currentIdx + 1}`}
+                </h2>
+                <p className="text-lg text-slate-500">Preencha as informações desta pessoa.</p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-lg font-bold text-slate-700">Nome Completo</label>
+                <input type="text" placeholder="Digite o nome completo"
+                  className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 focus:border-brand-teal outline-none transition-colors font-bold text-slate-900 bg-slate-50"
+                  value={curName} onChange={(e) => setCurName(e.target.value)} />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-lg font-bold text-slate-700">Congregação</label>
+                <input type="text" placeholder="Qual a congregação?"
+                  className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 focus:border-brand-teal outline-none transition-colors font-bold text-slate-900 bg-slate-50"
+                  value={curCong} onChange={(e) => setCurCong(e.target.value)} />
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2">
+                <button disabled={curName.trim().length < 3} onClick={goToMemberAccessories}
+                  className={`w-full py-6 rounded-2xl font-black text-2xl flex items-center justify-center gap-4 transition-all ${curName.trim().length >= 3 ? "bg-brand-teal text-slate-900 hover:scale-[1.02] shadow-xl" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}>
+                  Escolher Acessórios <ArrowRight size={28} />
+                </button>
+                <button onClick={currentIdx > 0 ? goBackToPrevMember : () => setMainStep("init")}
+                  className="w-full py-4 flex items-center justify-center gap-2 border-2 border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all font-bold text-base">
+                  <ArrowLeft size={18} /> Voltar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SUB 2: ACESSÓRIOS */}
+          {memberSubStep === 2 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-1">Acessórios de {curName}</h2>
+                <p className="text-lg text-slate-500">Escolha os itens para este crachá.</p>
+              </div>
+
+              <div className="space-y-4">
+                {accessoryItems.length > 0 ? accessoryItems.map((ti: any) => {
+                  const isSelected = curItems.includes(ti.itemId);
+                  const blockedBy = accessoryItems.find((o: any) => curItems.includes(o.itemId) && o.exclusiveWith?.split(",").includes(ti.itemId));
+                  const isBlocked = !!blockedBy;
+                  return (
+                    <div key={ti.itemId} onClick={() => !isBlocked && toggleItem(ti.itemId)}
+                      className={`p-6 rounded-2xl border-4 transition-all flex items-center gap-6 cursor-pointer ${isSelected ? "border-brand-teal bg-brand-teal/5" : isBlocked ? "opacity-50 border-slate-100 bg-slate-50 cursor-not-allowed grayscale" : "border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50"}`}>
+                      <div className={`w-20 h-20 rounded-xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${isSelected ? "bg-brand-teal text-slate-900" : "bg-slate-100 text-slate-400"}`}>
+                        {isSelected ? <Check size={40} strokeWidth={3} /> : ti.item.imageUrl ? <img src={ti.item.imageUrl} alt={ti.item.name} className="w-full h-full object-cover" /> : <Package size={32} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-black text-2xl ${isSelected ? "text-slate-900" : "text-slate-700"}`}>{ti.item.name}</p>
+                        <p className={`text-sm font-black uppercase tracking-widest mt-1 ${isSelected ? "text-brand-teal" : "text-slate-500"}`}>
+                          {ti.isRequired ? "INCLUSO NO KIT" : isBlocked ? "INCOMPATÍVEL" : `+ R$ ${ti.item.price.toFixed(2)}`}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-center text-slate-500 text-xl font-bold py-10 bg-slate-50 rounded-2xl">Nenhum acessório disponível.</p>
+                )}
+              </div>
+
+              {/* Placar de preço — acumula conforme o usuário avança */}
+              {(() => {
+                const base = template.basePrice ?? 0;
+                const extras = accessoryItems
+                  .filter((ti: any) => curItems.includes(ti.itemId) && !ti.isRequired)
+                  .reduce((s: number, ti: any) => s + (ti.item.price ?? 0), 0);
+                const curTotal = base + extras;
+                const accumulated = members.reduce((s, m) => s + memberTotal(m), 0) + curTotal;
+                return (
+                  <div className="bg-slate-900 rounded-2xl p-5 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Este crachá</p>
+                      <p className="text-2xl font-black text-white">R$ {curTotal.toFixed(2)}</p>
+                    </div>
+                    {quantity > 1 && (
+                      <>
+                        <div className="w-px h-10 bg-slate-700" />
+                        <div className="text-right">
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total até agora</p>
+                          <p className="text-2xl font-black text-brand-teal">R$ {accumulated.toFixed(2)}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex flex-col gap-3">
+                <button onClick={confirmCurrentMember}
+                  className="w-full py-6 bg-brand-teal text-slate-900 rounded-2xl font-black text-2xl flex items-center justify-center gap-4 transition-all shadow-xl hover:scale-[1.02]">
+                  {currentIdx + 1 < quantity ? `Próximo Crachá (#${currentIdx + 2})` : "Ver Resumo"} <ArrowRight size={28} />
+                </button>
+                <button onClick={goToMemberData}
+                  className="w-full py-4 flex items-center justify-center gap-2 border-2 border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all font-bold text-base">
+                  <ArrowLeft size={18} /> Voltar para os dados
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── STEP SUMMARY ── */}
+      {mainStep === "summary" && (
+        <div className="space-y-6">
+          <div className="text-center">
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-2">Resumo</h2>
+            <p className="text-lg text-slate-500">Confira todos os crachás antes de finalizar.</p>
+          </div>
+
+          <div className="space-y-3">
+            {members.map((m, i) => {
+              const extras = accessoryItems.filter((ti: any) => m.selectedItems.includes(ti.itemId) && !ti.isRequired);
+              return (
+                <div key={i} className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-black text-xl text-slate-900">{m.name}</p>
+                      {m.congregation && <p className="text-sm text-slate-500 font-bold">{m.congregation}</p>}
+                    </div>
+                    <span className="font-black text-xl text-brand-teal">R$ {memberTotal(m).toFixed(2)}</span>
+                  </div>
+                  {extras.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {extras.map((ti: any) => (
+                        <span key={ti.itemId} className="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-black text-slate-600 uppercase tracking-wide">
+                          {ti.item.name} +R${ti.item.price.toFixed(2)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-between items-center p-5 bg-slate-900 rounded-2xl">
+            <span className="text-white font-black text-xl">Total Geral</span>
+            <span className="font-black text-2xl text-brand-teal">R$ {grandTotal().toFixed(2)}</span>
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2">
+            <button onClick={() => setMainStep("preview")}
+              className="w-full py-5 md:py-6 bg-brand-teal text-slate-900 rounded-2xl font-black text-xl md:text-2xl flex items-center justify-center gap-3 md:gap-4 transition-all shadow-xl hover:scale-[1.02]">
+              Ver Crachá e Aprovar <ArrowRight size={28} className="shrink-0" />
+            </button>
+            <button onClick={goBackFromSummary}
+              className="w-full py-3 md:py-4 flex items-center justify-center gap-2 border-2 border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all font-bold text-sm md:text-base">
+              <ArrowLeft size={18} className="shrink-0" /> Voltar e corrigir
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP PREVIEW ── */}
+      {mainStep === "preview" && members.length > 0 && (
+        <PreviewCarousel
+          members={members}
+          template={template}
+          config={config}
+          isSubmitting={isSubmitting}
+          onSubmit={handleSubmit}
+          onBack={() => setMainStep("summary")}
+        />
+      )}
     </div>
   );
-
-  return (
-    <>
-      <div className="w-full max-w-[1700px] mx-auto px-2 md:px-6">
-        {/* Layout Simétrico App-Like - Flat Dark Style */}
-        <div className="flex flex-col lg:flex-row gap-6 items-stretch min-h-[750px]">
-          
-          {/* Lado do Formulário */}
-          <div className="w-full lg:w-[45%] xl:w-[40%] form-card-dark py-6 px-4 md:p-10 rounded-[28px] md:rounded-[40px] shadow-2xl flex flex-col relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none group-hover:opacity-[0.07] transition-opacity">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-32 h-32"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
-            
-            <PedidoForm
-              onDataChange={(data: any) => {
-                setName(data.clientName);
-                setCongregation(data.congregation);
-              }}
-              onSubmit={handleSubmit}
-              isSubmitting={isSubmitting}
-              items={template.items || []}
-              basePrice={template.basePrice || 0}
-              membersCount={groupMembers.length}
-              onAddMember={handleAddMember}
-            />
-          </div>
-
-          {/* Lado do Preview */}
-          <div className="w-full lg:w-[55%] xl:w-[60%] form-card-dark py-6 px-2 md:p-10 rounded-[28px] md:rounded-[40px] shadow-2xl flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#00f2fe]/5 via-transparent to-transparent pointer-events-none" />
-            {badgePreview}
-          </div>
-
-        </div>
-      </div>
-
-      <FeedbackModal
-        isOpen={modalOpen}
-        type={modal.type}
-        title={modal.title}
-        message={modal.message}
-        onClose={() => setModalOpen(false)}
-        actionLabel={(modal as any).actionLabel}
-        onAction={(modal as any).onAction}
-      />
-
-      <PixModal
-        isOpen={pixModalOpen}
-        onClose={() => {
-          setPixModalOpen(false);
-          // Logo após fechar o PIX, mostramos a mensagem de sucesso com botão do WhatsApp
-          setModal({
-            type: "success",
-            title: "✅ Quase lá!\nPedido no Sistema!",
-            message: "Seu pedido foi registrado. \n\nClique no botão abaixo para nos enviar o **comprovante via WhatsApp** e agilizar sua produção!",
-            actionLabel: "Enviar Comprovante (WhatsApp)",
-            onAction: openWhatsapp
-          } as any);
-          setModalOpen(true);
-        }}
-        amount={orderAmount}
-      />
-    </>
-  );
 }
-
-

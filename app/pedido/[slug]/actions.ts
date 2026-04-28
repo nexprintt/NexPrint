@@ -36,17 +36,26 @@ export async function createOrder(data: unknown) {
     });
 
     if (existingOrder) {
+      // Se já existe um pedido idêntico recente, consideramos sucesso para permitir 
+      // que o cliente veja o PIX novamente sem gerar erro de duplicidade.
       return {
-        success: false,
-        error:
-          "Detectamos um pedido idêntico enviado recentemente. Por favor, aguarde alguns minutos ou verifique se já recebeu a confirmação.",
+        success: true,
+        orderIds: [existingOrder.id],
+        groupId: existingOrder.groupId,
+        isExisting: true // Flag opcional para controle interno
       };
     }
 
     // ── 3. BUSCAR PREÇOS E TEMPLATE ───────────────────────────────────────────
     const template = await prisma.badgeTemplate.findUnique({
       where: { id: validData.badgeTemplateId },
-      include: { items: true },
+      include: { 
+        items: {
+          include: {
+            item: true
+          }
+        } 
+      },
     });
 
     if (!template) {
@@ -54,14 +63,26 @@ export async function createOrder(data: unknown) {
     }
 
     const basePrice = template.basePrice || 0;
-    const requiredItemIds = new Set(
-      template.items.filter((ti) => ti.isRequired).map((ti) => ti.itemId)
-    );
+    const requiredItemIds = template.items.filter((ti) => ti.isRequired).map((ti) => ti.itemId);
 
     // ── 4. CRIAR PEDIDOS EM TRANSAÇÃO (Tudo ou Nada) ──────────────────────────
-    const createdOrders = await prisma.$transaction(
-      validData.members.map((member) => {
-        return prisma.order.create({
+    const createdOrders = await prisma.$transaction(async (tx) => {
+      const orders = [];
+      
+      for (const member of validData.members) {
+        // Unir itens selecionados pelo cliente (opcionais) + itens obrigatórios (automáticos)
+        const allItemIds = Array.from(new Set([...member.items, ...requiredItemIds]));
+
+        // Buscar os preços reais dos itens para salvar no histórico
+        const itemsWithPrices = allItemIds.map(id => {
+          const templateItem = template.items.find(ti => ti.itemId === id);
+          return {
+            itemId: id,
+            price: templateItem?.item?.price || 0
+          };
+        });
+
+        const newOrder = await tx.order.create({
           data: {
             eventId: validData.eventId,
             badgeTemplateId: validData.badgeTemplateId,
@@ -71,7 +92,6 @@ export async function createOrder(data: unknown) {
             congregation: member.congregation || "",
             photoUrl: member.photoUrl ?? null,
             customConfigJson: member.customConfigJson,
-
             isFromItabira: validData.isFromItabira,
             zipCode: validData.zipCode,
             address: validData.address,
@@ -83,18 +103,28 @@ export async function createOrder(data: unknown) {
             shippingCost: validData.shippingCost,
             shippingService: validData.shippingService,
             paymentMethod: validData.paymentMethod,
-
             items: {
-              create: member.items.map((itemId) => ({
-                itemId: itemId,
-                priceAtTime: requiredItemIds.has(itemId) ? 0 : 0,
+              create: itemsWithPrices.map((ip) => ({
+                itemId: ip.itemId,
+                priceAtTime: ip.price,
               })),
             },
-            totalAmount: basePrice,
+            totalAmount: basePrice + itemsWithPrices
+              .filter(ip => !requiredItemIds.includes(ip.itemId))
+              .reduce((sum, item) => sum + item.price, 0),
           },
         });
-      })
-    );
+
+        for (const itemId of allItemIds) {
+          await tx.badgeItem.update({
+            where: { id: itemId },
+            data: { stock: { decrement: 1 } }
+          });
+        }
+        orders.push(newOrder);
+      }
+      return orders;
+    });
 
     revalidatePath(`/pedido/${validData.eventId}`);
     revalidatePath(`/admin/pedidos`);

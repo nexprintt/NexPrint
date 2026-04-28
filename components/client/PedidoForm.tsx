@@ -17,7 +17,12 @@ import {
   CreditCard,
   QrCode,
   Search,
-  CheckCircle
+  CheckCircle,
+  X,
+  Minus,
+  Plus,
+  Camera,
+  RotateCcw
 } from "lucide-react";
 import { calculateShippingAction } from "@/app/pedido/[slug]/actions";
 
@@ -101,6 +106,17 @@ export default function PedidoForm({
     setFormData((prev) => ({ ...prev, ...updates }));
   };
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleUpdate({ photoUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const fetchCep = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, "");
     if (cleanCep.length !== 8) return;
@@ -146,28 +162,32 @@ export default function PedidoForm({
   const prevStep = () => setStep((s) => s - 1);
 
   const toggleItem = (itemId: string) => {
-    const isMandatory = items.find((ti) => ti.itemId === itemId)?.isRequired;
-    if (isMandatory) return;
-    const newItems = formData.items.includes(itemId)
-      ? formData.items.filter((i) => i !== itemId)
-      : [...formData.items, itemId];
+    const ti = items.find((ti) => ti.itemId === itemId);
+    if (ti?.isRequired) return;
+
+    const isSelecting = !formData.items.includes(itemId);
+    
+    let newItems = isSelecting
+      ? [...formData.items, itemId]
+      : formData.items.filter((i) => i !== itemId);
+
+    // Se estamos ADICIONANDO um item, removemos os que ele bloqueia
+    if (isSelecting && ti.exclusiveWith) {
+      const exclusions = ti.exclusiveWith.split(",").filter(Boolean);
+      newItems = newItems.filter(id => !exclusions.includes(id));
+    }
+
     handleUpdate({ items: newItems });
   };
 
   // Separa itens que não são o crachá principal
-  const accessoryItems = items.filter((ti: any) => {
-    const name = ti.item?.name?.toLowerCase() || "";
-    return !name.includes("crachá") && !name.includes("cracha");
-  });
+  const accessoryItems = items;
 
   const totalOptionalExtras = items
     .filter(
       (ti) =>
         formData.items.includes(ti.itemId) &&
-        !ti.isRequired &&
-        !["crachá", "cracha"].some((w) =>
-          ti.item?.name?.toLowerCase().includes(w)
-        )
+        !ti.isRequired
     )
     .reduce((acc, ti) => acc + ti.item.price, 0);
 
@@ -271,27 +291,31 @@ export default function PedidoForm({
               <div className="space-y-8">
                 {membersCount === 0 && (
                   <div className="p-6 rounded-3xl bg-[#09151c]/50 border border-white/5">
-                    <label className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-4 block">Quantos identificadores?</label>
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                      Quantas pessoas?
+                    </h3>
                     <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2 bg-[#050b10] rounded-full p-2 border border-white/5">
-                        <button 
-                          onClick={() => setTotalCrachas(Math.max(1, totalCrachas - 1))} 
-                          className="w-10 h-10 rounded-full text-slate-500 hover:bg-slate-800 transition-all flex items-center justify-center font-bold text-xl"
+                      <div className="flex items-center bg-[#050b10] rounded-full p-1 border border-white/5 shadow-inner">
+                        <button
+                          type="button"
+                          onClick={() => setTotalCrachas(Math.max(1, totalCrachas - 1))}
+                          className="size-10 flex items-center justify-center text-slate-500 hover:text-white transition-colors"
                         >
-                          -
+                          <Minus size={20} />
                         </button>
-                        <span className="text-lg font-bold text-white w-8 text-center tabular-nums font-outfit">
+                        <span className="w-12 text-center text-xl font-black tabular-nums text-white">
                           {totalCrachas}
                         </span>
-                        <button 
-                           onClick={() => setTotalCrachas(Math.min(10, totalCrachas + 1))} 
-                           className="w-10 h-10 rounded-full bg-[#00f2fe] text-[#020b12] flex items-center justify-center font-bold text-xl hover:scale-105 transition-transform"
+                        <button
+                          type="button"
+                          onClick={() => setTotalCrachas(Math.min(10, totalCrachas + 1))}
+                          className="size-10 bg-brand-teal text-brand-navy rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,229,192,0.4)]"
                         >
-                          +
+                          <Plus size={20} strokeWidth={3} />
                         </button>
                       </div>
-                      <p className="text-[9px] text-slate-500 font-medium leading-relaxed max-w-[140px]">
-                        Você pode adicionar até 10 pessoas no mesmo pedido para economizar no frete.
+                      <p className="text-[10px] leading-relaxed text-slate-500 font-medium max-w-[180px]">
+                        Adicione até <strong className="text-slate-300">10 pessoas</strong> no mesmo pedido.
                       </p>
                     </div>
                   </div>
@@ -309,6 +333,7 @@ export default function PedidoForm({
                     <input
                       type="text"
                       placeholder="Ex: João Silva"
+                      maxLength={30}
                       className="w-full px-5 py-4 rounded-[16px] border border-white/5 bg-black/40 focus:border-[#00f2fe]/50 outline-none transition-all font-semibold text-white placeholder:text-slate-600 shadow-inner"
                       value={formData.clientName}
                       onChange={(e) => handleUpdate({ clientName: e.target.value })}
@@ -321,6 +346,7 @@ export default function PedidoForm({
                       <input
                         type="text"
                         placeholder="Ex: Central"
+                        maxLength={30}
                         className="w-full px-5 py-4 rounded-[16px] border border-white/5 bg-black/40 focus:border-[#00f2fe]/50 outline-none transition-all font-semibold text-white placeholder:text-slate-600 shadow-inner"
                         value={formData.congregation}
                         onChange={(e) => handleUpdate({ congregation: e.target.value })}
@@ -342,6 +368,8 @@ export default function PedidoForm({
                       </div>
                     )}
                   </div>
+
+
                 </div>
 
                 <div className="pt-6">
@@ -571,34 +599,75 @@ export default function PedidoForm({
             </header>
 
             <div className="grid grid-cols-1 gap-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
-              {accessoryItems.map((ti: any) => {
-                const isSelected = formData.items.includes(ti.itemId);
-                return (
-                  <div
-                    key={ti.itemId}
-                    onClick={() => toggleItem(ti.itemId)}
-                    className={`p-5 rounded-3xl border-2 transition-all flex items-center gap-6 cursor-pointer group ${
-                      isSelected ? "border-brand-teal bg-brand-teal/5 ring-1 ring-brand-teal/20" : "border-white/5 bg-slate-900/40 hover:bg-slate-900/60"
-                    }`}
-                  >
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden transition-all relative ${isSelected ? "bg-brand-teal text-brand-navy shadow-[0_0_15px_rgba(0,229,192,0.4)]" : "bg-slate-950 text-slate-700 shadow-inner"}`}>
-                      {isSelected ? (
-                         <Check size={28} strokeWidth={4} />
-                      ) : ti.item.imageUrl ? (
-                         <img src={ti.item.imageUrl} alt={ti.item.name} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                      ) : (
-                         <Package size={28} />
-                      )}
+              {accessoryItems.length > 0 ? (
+                accessoryItems.map((ti: any) => {
+                  const isSelected = formData.items.includes(ti.itemId);
+                  
+                  // Verificar se este item está bloqueado por algum outro selecionado
+                  const blockedBy = items.find(otherTi => 
+                    formData.items.includes(otherTi.itemId) && 
+                    otherTi.exclusiveWith?.split(",").includes(ti.itemId)
+                  );
+                  const isBlocked = !!blockedBy;
+
+                  return (
+                    <div
+                      key={ti.itemId}
+                      onClick={() => !isBlocked && toggleItem(ti.itemId)}
+                      className={`p-5 rounded-3xl border-2 transition-all flex items-center gap-6 group ${
+                        isSelected 
+                          ? "border-brand-teal bg-brand-teal/5 ring-1 ring-brand-teal/20" 
+                          : isBlocked
+                            ? "opacity-40 border-white/5 bg-slate-900/20 cursor-not-allowed grayscale"
+                            : "border-white/5 bg-slate-900/40 hover:bg-slate-900/60 cursor-pointer"
+                      }`}
+                    >
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden transition-all relative ${
+                        isSelected 
+                          ? "bg-brand-teal text-brand-navy shadow-[0_0_15px_rgba(0,229,192,0.4)]" 
+                          : "bg-slate-950 text-slate-700 shadow-inner"
+                      }`}>
+                        {isSelected ? (
+                           <Check size={28} strokeWidth={4} />
+                        ) : isBlocked ? (
+                           <X size={24} className="text-red-500" />
+                        ) : ti.item.imageUrl ? (
+                           <img src={ti.item.imageUrl} alt={ti.item.name} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                        ) : (
+                           <Package size={28} />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className={`font-black text-lg leading-tight tracking-tight ${isSelected ? "text-white" : isBlocked ? "text-slate-500" : "text-slate-200"}`}>
+                            {ti.item.name}
+                          </p>
+                          {isBlocked && (
+                            <span className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 text-[8px] font-black uppercase border border-red-500/20">
+                              Incompatível
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mt-1.5 ${isSelected ? "text-brand-teal" : isBlocked ? "text-slate-600" : "text-slate-500"}`}>
+                          {ti.isRequired 
+                            ? "INCLUSO NO KIT" 
+                            : isBlocked 
+                              ? `BLOQUEADO POR: ${blockedBy.item.name.toUpperCase()}`
+                              : `+ VALOR ADICIONAL: R$ ${ti.item.price.toFixed(2)}`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className={`font-black text-lg leading-tight tracking-tight ${isSelected ? "text-white" : "text-slate-200"}`}>{ti.item.name}</p>
-                      <p className={`text-[10px] font-black uppercase tracking-widest mt-1.5 ${isSelected ? "text-brand-teal" : "text-slate-500"}`}>
-                        {ti.isRequired ? "INCLUSO NO KIT" : `+ VALOR ADICIONAL: R$ ${ti.item.price.toFixed(2)}`}
-                      </p>
-                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-20 flex flex-col items-center justify-center bg-slate-900/20 border border-white/5 rounded-3xl text-center px-6">
+                  <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center mb-4">
+                    <Package size={32} className="text-slate-700" />
                   </div>
-                );
-              })}
+                  <h3 className="text-white font-black text-lg">Sem acessórios extras</h3>
+                  <p className="text-slate-500 text-sm mt-2 font-medium">Este modelo de crachá não possui acessórios adicionais para seleção no momento.</p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

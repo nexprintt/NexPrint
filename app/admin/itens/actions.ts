@@ -1,5 +1,5 @@
 "use server";
-// v2: Adicionado Zod para validação dos dados dos itens
+// v3: Adicionado suporte a Preço de Custo e robustez na validação
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { writeFile } from "fs/promises";
@@ -12,11 +12,12 @@ export async function createBadgeItem(formData: FormData) {
     const raw = {
       name: formData.get("name"),
       description: formData.get("description") || null,
-      price: parseFloat((formData.get("price") as string || "0").replace(",", ".")),
-      stock: parseInt(formData.get("stock") as string || "0"),
+      price: parseFloat((formData.get("price") as string || "0").replace(",", ".")) || 0,
+      costPrice: parseFloat((formData.get("costPrice") as string || "0").replace(",", ".")) || 0,
+      stock: parseInt(formData.get("stock") as string || "0") || 0,
     };
 
-    const parsed = badgeItemSchema.pick({ name: true, description: true, price: true, stock: true }).safeParse(raw);
+    const parsed = badgeItemSchema.pick({ name: true, description: true, price: true, costPrice: true, stock: true }).safeParse(raw);
     if (!parsed.success) {
       const msg = parsed.error.issues[0]?.message || "Dados inválidos.";
       return { success: false, error: msg };
@@ -50,6 +51,7 @@ export async function createBadgeItem(formData: FormData) {
         name: parsed.data.name,
         description: parsed.data.description ?? null,
         price: parsed.data.price,
+        costPrice: parsed.data.costPrice,
         stock: parsed.data.stock,
         imageUrl,
       },
@@ -69,11 +71,12 @@ export async function updateBadgeItem(id: string, formData: FormData) {
     const raw = {
       name: formData.get("name"),
       description: formData.get("description") || null,
-      price: parseFloat((formData.get("price") as string || "0").replace(",", ".")),
-      stock: parseInt(formData.get("stock") as string || "0"),
+      price: parseFloat((formData.get("price") as string || "0").replace(",", ".")) || 0,
+      costPrice: parseFloat((formData.get("costPrice") as string || "0").replace(",", ".")) || 0,
+      stock: parseInt(formData.get("stock") as string || "0") || 0,
     };
 
-    const parsed = badgeItemSchema.pick({ name: true, description: true, price: true, stock: true }).safeParse(raw);
+    const parsed = badgeItemSchema.pick({ name: true, description: true, price: true, costPrice: true, stock: true }).safeParse(raw);
     if (!parsed.success) {
       const msg = parsed.error.issues[0]?.message || "Dados inválidos.";
       return { success: false, error: msg };
@@ -83,6 +86,7 @@ export async function updateBadgeItem(id: string, formData: FormData) {
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       price: parsed.data.price,
+      costPrice: parsed.data.costPrice,
       stock: parsed.data.stock,
     };
 
@@ -112,9 +116,9 @@ export async function updateBadgeItem(id: string, formData: FormData) {
 
     revalidatePath("/admin/itens");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating item:", error);
-    return { success: false, error: "Falha ao atualizar item" };
+    return { success: false, error: `Falha ao atualizar item: ${error.message || "Erro interno"}` };
   }
 }
 

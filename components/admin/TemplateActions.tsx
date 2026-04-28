@@ -61,20 +61,20 @@ export default function TemplateActions({ id, isActive }: TemplateActionsProps) 
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1.5">
       {/* Botão de Toggle (Play/Pause) */}
       <motion.button 
         whileTap={{ scale: 0.9 }}
         onClick={handleToggle}
         disabled={loading}
-        className={`p-3 rounded-xl transition-all shadow-sm flex items-center justify-center ${
+        className={`p-2 rounded-xl transition-all shadow-sm flex items-center justify-center ${
           isActive 
             ? "bg-amber-50 text-amber-500 hover:bg-amber-100" 
             : "bg-emerald-50 text-emerald-500 hover:bg-emerald-100"
         }`}
         title={isActive ? "Pausar Template" : "Ativar Template"}
       >
-        {isActive ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+        {isActive ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
       </motion.button>
 
       {/* Botão de Editar */}
@@ -82,10 +82,10 @@ export default function TemplateActions({ id, isActive }: TemplateActionsProps) 
         whileTap={{ scale: 0.9 }}
         onClick={() => router.push(`/admin/templates/${id}/editar`)}
         disabled={loading}
-        className="p-3 bg-slate-50 text-slate-400 hover:text-brand-teal hover:bg-slate-100 rounded-xl transition-all shadow-sm flex items-center justify-center"
+        className="p-2 bg-slate-50 text-slate-400 hover:text-brand-teal hover:bg-slate-100 rounded-xl transition-all shadow-sm flex items-center justify-center"
         title="Editar Template"
       >
-        <Edit3 size={20} />
+        <Edit3 size={18} />
       </motion.button>
 
       {/* Botão de Excluir */}
@@ -93,10 +93,10 @@ export default function TemplateActions({ id, isActive }: TemplateActionsProps) 
         whileTap={{ scale: 0.9 }}
         onClick={handleDelete}
         disabled={loading}
-        className="p-3 bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all shadow-sm flex items-center justify-center"
+        className="p-2 bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all shadow-sm flex items-center justify-center"
         title="Excluir Template"
       >
-        <Trash2 size={20} />
+        <Trash2 size={18} />
       </motion.button>
     </div>
   );

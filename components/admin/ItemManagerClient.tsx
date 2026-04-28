@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { Plus, Package, Edit, Trash2, ShoppingBag, Image as ImageIcon, Upload, X } from "lucide-react";
+import { mutate } from "swr";
 import { createBadgeItem, updateBadgeItem, deleteBadgeItem } from "@/app/admin/itens/actions";
 import { BadgeItem } from "@prisma/client";
 
@@ -16,7 +17,8 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
+   const [price, setPrice] = useState("");
+  const [costPrice, setCostPrice] = useState("");
   const [stock, setStock] = useState("");
   const [customUrl, setCustomUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -32,6 +34,7 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
     setName("");
     setDescription("");
     setPrice("");
+    setCostPrice("");
     setStock("");
     setCustomUrl("");
     setSelectedFile(null);
@@ -45,6 +48,7 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
     setName(item.name);
     setDescription((item as any).description || "");
     setPrice(item.price.toString());
+    setCostPrice(item.costPrice?.toString() || "0");
     setStock(item.stock.toString());
     setCustomUrl(item.imageUrl || "");
     setSelectedFile(null);
@@ -70,6 +74,7 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
       formData.append("name", name);
       formData.append("description", description);
       formData.append("price", price);
+      formData.append("costPrice", costPrice);
       formData.append("stock", stock);
       
       if (selectedFile) {
@@ -85,6 +90,8 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
         const result = await createBadgeItem(formData);
         if (!result.success) alert(result.error);
       }
+      
+      mutate('itens-list');
       setIsModalOpen(false);
     } catch (err) {
       alert("Ocorreu um erro ao salvar o item");
@@ -98,28 +105,37 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
       const result = await deleteBadgeItem(id);
       if (!result.success) {
         alert(result.error || "Erro ao excluir o item.");
+      } else {
+        mutate('itens-list');
       }
     }
   };
 
   const handleExportCSV = () => {
     // Cabeçalhos
-    const headers = ["ID", "Nome do Produto", "Preço Unitário", "Quantidade em Estoque", "Valor Total em Estoque"];
+    const headers = ["ID", "Nome do Produto", "Preço Custo", "Preço Venda", "Lucro Unitário", "Quantidade em Estoque", "Valor Total Venda", "Lucro Total Previsto"];
     
     // Linhas
-    const rows = initialItens.map(item => [
-      item.id,
-      `"${item.name}"`, // Aspas para previnir bugs com vírgula no nome
-      item.price.toFixed(2),
-      item.stock,
-      (item.price * item.stock).toFixed(2)
-    ]);
+    const rows = initialItens.map(item => {
+      const profit = item.price - (item.costPrice || 0);
+      return [
+        item.id,
+        `"${item.name}"`,
+        (item.costPrice || 0).toFixed(2),
+        item.price.toFixed(2),
+        profit.toFixed(2),
+        item.stock,
+        (item.price * item.stock).toFixed(2),
+        (profit * item.stock).toFixed(2)
+      ];
+    });
 
     // Calcular totais p/ a última linha
     const totalEstoque = initialItens.reduce((acc, item) => acc + item.stock, 0);
-    const totalValor = initialItens.reduce((acc, item) => acc + (item.price * item.stock), 0);
+    const totalVenda = initialItens.reduce((acc, item) => acc + (item.price * item.stock), 0);
+    const totalLucro = initialItens.reduce((acc, item) => acc + ((item.price - (item.costPrice || 0)) * item.stock), 0);
     
-    rows.push(["-", '"TOTAL"', "-", totalEstoque, totalValor.toFixed(2)]);
+    rows.push(["-", '"TOTAL"', "-", "-", "-", totalEstoque, totalVenda.toFixed(2), totalLucro.toFixed(2)]);
 
     // Gerar string CSV
     const csvContent = "data:text/csv;charset=utf-8," + 
@@ -179,7 +195,10 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
               {(item as any).description && (
                 <p className="text-slate-400 text-xs font-medium mb-1 leading-tight">{(item as any).description}</p>
               )}
-              <p className="text-brand-teal font-black text-lg">R$ {item.price.toFixed(2)}</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-brand-teal font-black text-lg">R$ {item.price.toFixed(2)}</p>
+                <p className="text-slate-400 text-[10px] font-bold uppercase">Custo: R$ {(item as any).costPrice?.toFixed(2) || "0.00"}</p>
+              </div>
               
               <div className="flex flex-wrap items-center justify-between gap-2 mt-4 w-full">
                 <div className="bg-slate-50 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-slate-400 border border-slate-100">
@@ -253,9 +272,21 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-black text-brand-navy block uppercase tracking-wide">Preço (R$)</label>
+                  <label className="text-sm font-black text-brand-navy block uppercase tracking-wide text-[10px]">Custo (R$)</label>
+                  <input 
+                    type="number" 
+                    required
+                    step="0.01"
+                    value={costPrice}
+                    onChange={(e) => setCostPrice(e.target.value)}
+                    placeholder="0.00" 
+                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-brand-teal transition-all text-brand-navy font-bold placeholder:text-slate-400"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-black text-brand-navy block uppercase tracking-wide text-[10px]">Venda (R$)</label>
                   <input 
                     type="number" 
                     required
@@ -267,7 +298,7 @@ export default function ItemManagerClient({ initialItens }: ItemManagerClientPro
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-black text-brand-navy block uppercase tracking-wide">Estoque Atual</label>
+                  <label className="text-sm font-black text-brand-navy block uppercase tracking-wide text-[10px]">Estoque</label>
                   <input 
                     type="number" 
                     required

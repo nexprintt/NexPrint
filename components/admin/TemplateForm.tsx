@@ -18,7 +18,7 @@ interface TemplateFormProps {
     orientation: "landscape" | "portrait";
     config?: any;
     basePrice?: number;
-    associatedItems?: { id: string; isRequired: boolean }[];
+    associatedItems?: { id: string; isRequired: boolean; isHidden: boolean; exclusiveWith?: string }[];
   };
   availableItems: BadgeItem[];
   title: string;
@@ -38,9 +38,14 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
     basePrice: initialData?.basePrice || 0,
   });
 
-  const [selectedItems, setSelectedItems] = useState<{ id: string; isRequired: boolean }[]>(
+  const [selectedItems, setSelectedItems] = useState<{ id: string; isRequired: boolean; isHidden: boolean; exclusiveWith?: string }[]>(
     initialData?.associatedItems || []
   );
+
+  const [previewTexts, setPreviewTexts] = useState({
+    name: initialData?.config?.previewName || "Participante de Exemplo",
+    congregation: initialData?.config?.previewCongregation || "Congregação Brasília - DF"
+  });
 
   const [config, setConfig] = useState(initialData?.config || {
     orientation: initialData?.orientation || "landscape",
@@ -56,7 +61,12 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
         name: template.name,
         bgImageUrl: template.bgImageUrl,
         orientation: template.orientation,
-        config: { ...config, orientation: template.orientation },
+        config: { 
+          ...config, 
+          orientation: template.orientation,
+          previewName: previewTexts.name,
+          previewCongregation: previewTexts.congregation
+        },
         basePrice: template.basePrice,
         // eventId não é enviado na edição — o servidor busca o original
         items: selectedItems,
@@ -101,7 +111,7 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
       if (exists) {
         return prev.filter(i => i.id !== itemId);
       } else {
-        return [...prev, { id: itemId, isRequired: false }];
+        return [...prev, { id: itemId, isRequired: false, isHidden: false, exclusiveWith: "" }];
       }
     });
   };
@@ -109,6 +119,29 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
   const toggleRequired = (itemId: string) => {
     setSelectedItems(prev => prev.map(i => 
       i.id === itemId ? { ...i, isRequired: !i.isRequired } : i
+    ));
+  };
+
+  const toggleExclusion = (sourceId: string, targetId: string) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id !== sourceId) return item;
+      
+      const currentExclusions = item.exclusiveWith ? item.exclusiveWith.split(",").filter(Boolean) : [];
+      let newExclusions: string[];
+      
+      if (currentExclusions.includes(targetId)) {
+        newExclusions = currentExclusions.filter(id => id !== targetId);
+      } else {
+        newExclusions = [...currentExclusions, targetId];
+      }
+      
+      return { ...item, exclusiveWith: newExclusions.join(",") };
+    }));
+  };
+
+  const toggleHidden = (itemId: string) => {
+    setSelectedItems(prev => prev.map(i => 
+      i.id === itemId ? { ...i, isHidden: !i.isHidden } : i
     ));
   };
 
@@ -140,22 +173,6 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
       <main className="flex-1 flex overflow-hidden">
         {/* Canvas Area (Left) */}
         <div className="flex-1 bg-slate-50 flex flex-col items-center justify-center p-12 relative overflow-hidden">
-          <div className="absolute top-8 left-8">
-            <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-               <button 
-                 onClick={() => setActiveTab("design")}
-                 className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2", activeTab === "design" ? "bg-brand-navy text-white" : "text-slate-400 hover:text-slate-600")}
-               >
-                 <Settings2 size={14} /> DESIGN
-               </button>
-               <button 
-                 onClick={() => setActiveTab("accessories")}
-                 className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2", activeTab === "accessories" ? "bg-brand-navy text-white" : "text-slate-400 hover:text-slate-600")}
-               >
-                 <Plus size={14} /> ACESSÓRIOS
-               </button>
-            </div>
-          </div>
 
           <div className="absolute top-8 right-8">
             <button 
@@ -170,8 +187,8 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
           <div className="bg-white p-10 rounded-[48px] shadow-2xl shadow-brand-navy/5 border border-white/50 relative">
              <div className="absolute -inset-4 bg-brand-teal/5 blur-3xl -z-10 rounded-full"></div>
              <BadgeCanvas 
-                name="Participante de Exemplo"
-                congregation="Congregação Brasília - DF"
+                name={previewTexts.name}
+                congregation={previewTexts.congregation}
                 bgImageUrl={template.bgImageUrl}
                 orientation={template.orientation}
                 config={config}
@@ -187,8 +204,26 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
 
         {/* Form Area (Right) */}
         <div className="w-[420px] border-l border-slate-100 flex flex-col shrink-0 overflow-y-auto">
+          {/* Aba Seletora Superior (Sidebar) */}
+          <div className="p-4 border-b border-slate-100 bg-white sticky top-0 z-20">
+            <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-200 overflow-hidden">
+               <button 
+                 onClick={() => setActiveTab("design")}
+                 className={cn("flex-1 py-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 tracking-widest", activeTab === "design" ? "bg-brand-navy text-white shadow-lg" : "text-slate-400 hover:text-slate-600")}
+               >
+                 <Settings2 size={14} /> DESIGN
+               </button>
+               <button 
+                 onClick={() => setActiveTab("accessories")}
+                 className={cn("flex-1 py-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 tracking-widest", activeTab === "accessories" ? "bg-brand-navy text-white shadow-lg" : "text-slate-400 hover:text-slate-600")}
+               >
+                 <Plus size={14} /> ACESSÓRIOS
+               </button>
+            </div>
+          </div>
+
           {activeTab === "design" ? (
-            <div className="p-8 space-y-8 animate-in slide-in-from-right-4 duration-300">
+            <div className="p-8 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                <div>
                   <h3 className="text-sm font-black text-brand-navy mb-4 flex items-center gap-2">
                     <Sparkles className="text-brand-teal" size={18} /> Aparência do Crachá
@@ -243,9 +278,9 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Arte de Fundo (PNG/JPG)</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Arte de Fundo (PDF/PNG/JPG)</label>
                       <div className="relative group">
-                        <input type="file" accept="image/*" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                        <input type="file" accept="image/*,.pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                         <div className="w-full px-6 py-12 rounded-2xl border-2 border-dashed border-slate-200 group-hover:border-brand-teal group-hover:bg-brand-teal/5 bg-slate-50 flex flex-col items-center justify-center gap-4 transition-all">
                           <ImageIcon className="text-slate-300 group-hover:text-brand-teal" size={32} />
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Clique para trocar a arte</span>
@@ -292,6 +327,27 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
                         </div>
                       </div>
                     </div>
+
+                    {/* Textos de Exemplo */}
+                    <div className="pt-6 border-t border-slate-100 space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Textos de Exemplo (Preview)</label>
+                      <div className="grid grid-cols-1 gap-3">
+                        <input 
+                          type="text" 
+                          placeholder="Nome de Exemplo"
+                          value={previewTexts.name}
+                          onChange={(e) => setPreviewTexts({...previewTexts, name: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 focus:border-brand-teal outline-none transition-all font-bold text-brand-navy text-xs"
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="Congregação de Exemplo"
+                          value={previewTexts.congregation}
+                          onChange={(e) => setPreviewTexts({...previewTexts, congregation: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-100 focus:border-brand-teal outline-none transition-all font-bold text-brand-navy text-xs"
+                        />
+                      </div>
+                    </div>
                   </div>
                </div>
             </div>
@@ -334,7 +390,8 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
                           </div>
 
                           {isSelected && (
-                            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                            <>
+                             <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                                <span className="text-[10px] font-black text-slate-500 uppercase">É Item Obrigatório?</span>
                                <button 
                                  onClick={() => toggleRequired(item.id)}
@@ -345,7 +402,37 @@ export default function TemplateForm({ initialData, title, isEdit, availableItem
                                >
                                  {isSelected.isRequired ? "SIM (Incluso)" : "NÃO (Opcional)"}
                                </button>
-                            </div>
+                             </div>
+
+                             {/* Regras de Exclusão */}
+                             <div className="mt-4 pt-4 border-t border-slate-100">
+                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Bloqueia o uso de:</p>
+                               <div className="flex flex-wrap gap-2">
+                                 {selectedItems.filter(si => si.id !== item.id).map(other => {
+                                   const otherDetails = availableItems.find(ai => ai.id === other.id);
+                                   const isExcluded = isSelected.exclusiveWith?.split(",").includes(other.id);
+                                   return (
+                                     <button
+                                       key={other.id}
+                                       type="button"
+                                       onClick={() => toggleExclusion(item.id, other.id)}
+                                       className={cn(
+                                         "px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border",
+                                         isExcluded 
+                                           ? "bg-red-50 text-red-500 border-red-100" 
+                                           : "bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-200"
+                                       )}
+                                     >
+                                       {otherDetails?.name}
+                                     </button>
+                                   );
+                                 })}
+                                 {selectedItems.length <= 1 && (
+                                   <span className="text-[9px] text-slate-300 font-medium italic">Adicione outros itens para criar regras</span>
+                                 )}
+                               </div>
+                             </div>
+                          </>
                           )}
                         </div>
                       );

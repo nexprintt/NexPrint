@@ -138,6 +138,20 @@
   html {
     @apply font-sans;
   }
+
+  /* Mãozinha em todo elemento clicável */
+  button:not([disabled]),
+  a,
+  [role="button"],
+  label[for],
+  select,
+  [onclick] {
+    cursor: pointer;
+  }
+
+  button[disabled] {
+    cursor: not-allowed;
+  }
 }
 
 @layer utilities {
@@ -193,5 +207,27 @@
       radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 1px, transparent 1px);
     background-size: 150px 150px;
     opacity: 0.8;
+  }
+
+  /* Scrollbar Customizada Premium */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    margin-block: 20px; /* Faz o scroll não bater no topo/fundo */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 20px;
+    border: 2px solid transparent; /* Cria um "espaço" ao redor do scroll */
+    background-clip: content-box;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+    background-clip: content-box;
   }
 }

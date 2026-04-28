@@ -5,6 +5,8 @@ import { Printer, ArrowLeft, Loader2, CheckCircle2, AlertCircle, Eye } from "luc
 import Link from "next/link";
 import BadgeCanvas from "@/components/canvas/BadgeCanvas";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { updateOrderStatus } from "@/app/admin/pedidos/actions";
 
 interface PrintClientProps {
   order: any;
@@ -13,6 +15,38 @@ interface PrintClientProps {
 export default function PrintClient({ order }: PrintClientProps) {
   const [status, setStatus] = useState<"idle" | "printing" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [printerInfo, setPrinterInfo] = useState({ connected: false, message: "Verificando conexão..." });
+  const [printSettings, setPrintSettings] = useState({ highDPI: true, monochrome: false });
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await fetch("/api/printer/control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "status" })
+        });
+        const data = await res.json();
+        if (data.success) {
+          // Se o output contém algo como "The printer is ready" ou similar
+          const output = data.output || "";
+          const isReady = output.toLowerCase().includes("ready") || output.toLowerCase().includes("online");
+          setPrinterInfo({ 
+            connected: isReady, 
+            message: isReady ? "Impressora pronta para tracionar" : "Impressora offline ou ocupada" 
+          });
+        } else {
+          setPrinterInfo({ connected: false, message: "Hardware não detectado" });
+        }
+      } catch (err) {
+        setPrinterInfo({ connected: false, message: "Erro na comunicação com o SDK" });
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Ref para o canvas do BadgeCanvas (precisamos acessar o fabric instance ou o DOM)
   // Como o BadgeCanvas não exporta o fabricRef, vamos usar um hack de espera ou clonar a lógica
@@ -42,12 +76,16 @@ export default function PrintClient({ order }: PrintClientProps) {
         body: JSON.stringify({ 
           action: "printImage", 
           value: base64Image,
-          orientation: badgeOrientation
+          orientation: badgeOrientation,
+          settings: printSettings
         }),
       });
 
       const data = await res.json();
       if (data.success) {
+        // Atualizar status no banco para "PRINTING" (Em Produção)
+        await updateOrderStatus(order.id, { status: "PRINTING" });
+        
         setStatus("success");
         // Volta para a lista após 3 segundos
         setTimeout(() => {
@@ -115,15 +153,62 @@ export default function PrintClient({ order }: PrintClientProps) {
                </div>
                <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex items-center gap-4 group hover:bg-white/10 transition-all">
                   <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white">
-                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                     <div className={cn(
+                       "w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)]",
+                       printerInfo.connected ? "bg-emerald-500 shadow-emerald-500/50" : "bg-red-500 shadow-red-500/50"
+                     )} />
                   </div>
                   <div>
                     <p className="text-white font-black text-sm uppercase tracking-tight">Status da Sigma DS3</p>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase leading-tight">Impressora pronta para tracionar</p>
+                    <p className={cn(
+                      "text-[10px] font-bold uppercase leading-tight",
+                      printerInfo.connected ? "text-slate-500" : "text-red-400"
+                    )}>
+                      {printerInfo.message}
+                    </p>
                   </div>
                </div>
             </div>
          </div>
+      </div>
+
+      {/* Configurações de Hardware */}
+      <div className="flex flex-col items-center gap-4 mb-8">
+        <span className="text-[10px] font-black text-brand-teal uppercase tracking-widest">Ajustes de Hardware</span>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setPrintSettings(s => ({ ...s, highDPI: !s.highDPI }))}
+            className={cn(
+              "px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all border",
+              printSettings.highDPI ? "bg-brand-teal text-brand-navy border-brand-teal shadow-lg shadow-brand-teal/20" : "bg-white/5 text-slate-500 border-white/5 hover:border-white/10"
+            )}
+          >
+            600 DPI (Qualidade Máxima)
+          </button>
+          <button 
+            onClick={() => setPrintSettings(s => ({ ...s, monochrome: !s.monochrome }))}
+            className={cn(
+              "px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all border",
+              printSettings.monochrome ? "bg-brand-teal text-brand-navy border-brand-teal shadow-lg shadow-brand-teal/20" : "bg-white/5 text-slate-500 border-white/5 hover:border-white/10"
+            )}
+          >
+            Modo Monocromático (Ribbon K)
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 w-fit">
+           <div className="w-8 h-8 bg-brand-teal/10 rounded-lg flex items-center justify-center text-brand-teal shrink-0">
+             <AlertCircle size={16} />
+           </div>
+           <div className="flex flex-col gap-0.5">
+             <p className="text-slate-500 text-[9px] font-bold uppercase tracking-tight">
+               {printSettings.highDPI ? "• Qualidade: Alta Definição (600 DPI)" : "• Qualidade: Padrão (300 DPI)"}
+             </p>
+             <p className="text-slate-500 text-[9px] font-bold uppercase tracking-tight">
+               {printSettings.monochrome ? "• Cores: Monocromático (Somente Preto)" : "• Cores: Perfil Colorido YMCKT"}
+             </p>
+           </div>
+        </div>
       </div>
 
       {/* Ações */}

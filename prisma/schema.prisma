@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "sqlite"
 }
 
 model Event {
@@ -69,7 +69,8 @@ model BadgeItem {
   id          String         @id @default(cuid())
   name        String
   description String?
-  price       Float
+  price       Float          // Preço de Venda
+  costPrice   Float          @default(0) // Preço de Custo
   stock       Int            @default(0)
   imageUrl    String?
   orderItems  OrderItem[]
@@ -77,11 +78,13 @@ model BadgeItem {
 }
 
 model TemplateItem {
-  templateId String
-  itemId     String
-  isRequired Boolean       @default(false)
-  template   BadgeTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  item       BadgeItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  templateId    String
+  itemId        String
+  isRequired    Boolean       @default(false)
+  isHidden      Boolean       @default(false)
+  exclusiveWith String?       // Lista de IDs de itens incompatíveis (ex: "id1,id2")
+  template      BadgeTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  item          BadgeItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@id([templateId, itemId])
 }

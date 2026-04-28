@@ -96,6 +96,7 @@ export async function POST(request: Request) {
         
         try {
           const badgeOrientation = body.orientation || "landscape";
+          const settings = body.settings || { highDPI: true, monochrome: false };
           const images: string[] = Array.isArray(value) ? value : [value];
           
           // Caminho temporário para as imagens
@@ -134,13 +135,19 @@ export async function POST(request: Request) {
             }
             if ($targetPaperSize -ne $null) { $doc.DefaultPageSettings.PaperSize = $targetPaperSize; }
             
-            # Ajuste de Qualidade
+            # Ajuste de Qualidade baseado nos settings
             $targetRes = $null;
+            $desiredDPI = if ($("${settings.highDPI}" -eq "true") -or ("${settings.highDPI}" -eq "True")) { 600 } else { 300 };
+            
             foreach ($res in $doc.PrinterSettings.PrinterResolutions) {
-              if ($res.X -eq 600 -and $res.Y -eq 600) { $targetRes = $res; break; }
-              if ($res.X -eq 300 -and $res.Y -eq 300) { $targetRes = $res; }
+              if ($res.X -eq $desiredDPI -and $res.Y -eq $desiredDPI) { $targetRes = $res; break; }
             }
-            if ($targetRes -ne $null) { $doc.DefaultPageSettings.PrinterResolution = $targetRes; }
+            if ($targetRes -ne $null) { 
+              $doc.DefaultPageSettings.PrinterResolution = $targetRes; 
+            } else {
+              # Fallback para o primeiro disponível se 600/300 falharem
+              $doc.DefaultPageSettings.PrinterResolution = $doc.PrinterSettings.PrinterResolutions[0];
+            }
 
             $doc.DefaultPageSettings.Landscape = $("${badgeOrientation}" -eq "landscape");
             $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0);

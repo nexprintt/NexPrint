@@ -36,7 +36,7 @@ export default async function EditarTemplatePage({ params }: EditarTemplatePageP
     orientation: (config.orientation || "landscape") as "landscape" | "portrait",
     config: config,
     basePrice: template.basePrice,
-    associatedItems: template.items.map(ti => ({ id: ti.itemId, isRequired: ti.isRequired }))
+    associatedItems: template.items.map(ti => ({ id: ti.itemId, isRequired: ti.isRequired, isHidden: ti.isHidden, exclusiveWith: ti.exclusiveWith || "" }))
   };
 
   return (

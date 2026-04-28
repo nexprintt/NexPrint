@@ -74,8 +74,12 @@ export const badgeItemSchema = z.object({
   description: z.string().max(500).optional().nullable(),
   price: z
     .number()
-    .min(0, "Preço não pode ser negativo.")
+    .min(0, "Preço de venda não pode ser negativo.")
     .max(9999, "Preço muito alto (máximo R$9.999)."),
+  costPrice: z
+    .number()
+    .min(0, "Preço de custo não pode ser negativo.")
+    .max(9999, "Preço muito alto."),
   stock: z
     .number()
     .int("Estoque precisa ser um número inteiro.")
@@ -90,7 +94,7 @@ export type BadgeItemInput = z.infer<typeof badgeItemSchema>;
 // ADMIN — Order Status
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ORDER_STATUSES = ["PENDING", "APPROVED", "PRINTED", "DELIVERED", "CANCELLED"] as const;
+const ORDER_STATUSES = ["PENDING", "PRINTING", "PRINTED", "DELIVERED", "CANCELLED"] as const;
 const PAYMENT_STATUSES = ["PENDING", "PAID", "FAILED", "REFUNDED"] as const;
 
 export const orderStatusSchema = z.object({

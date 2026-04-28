@@ -1,9 +1,9 @@
 import React from "react";
 import prisma from "@/lib/prisma";
 import { Plus, Layout, Link as LinkIcon, Copy } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import TemplateActions from "@/components/admin/TemplateActions";
+import TemplateImage from "@/components/client/TemplateImage";
 
 export default async function TemplatesPage() {
   const templates = await prisma.badgeTemplate.findMany({
@@ -25,12 +25,12 @@ export default async function TemplatesPage() {
         {templates.map((template) => (
           <div key={template.id} className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm group hover:shadow-lg transition-all">
             {/* Preview da Arte */}
-            <div className="aspect-[1.6/1] relative bg-slate-100 overflow-hidden border-b border-slate-50">
-              <Image 
+            <div className="aspect-[1011/638] relative bg-slate-100 overflow-hidden border-b border-slate-50">
+              <TemplateImage 
                 src={template.bgImageUrl} 
                 alt={template.name} 
                 fill 
-                className="object-cover group-hover:scale-105 transition-all duration-700"
+                className="transition-all duration-700"
               />
               <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-brand-navy/60 to-transparent" />
               <div className="absolute bottom-3 left-4">
@@ -41,12 +41,12 @@ export default async function TemplatesPage() {
             </div>
 
             <div className="p-5">
-              <div className="flex justify-between items-start mb-4">
-                <div className="min-w-0 flex-1 mr-2">
+              <div className="mb-4">
+                <div className="mb-3">
                   <h3 className="text-base font-black text-brand-navy truncate leading-tight">{template.name}</h3>
                   <p className="text-slate-400 text-[11px] truncate">{template.event.name}</p>
                 </div>
-                <div className="shrink-0 flex items-center">
+                <div className="flex items-center justify-start border-t border-slate-50 pt-3">
                   <TemplateActions id={template.id} isActive={template.isActive} />
                 </div>
               </div>

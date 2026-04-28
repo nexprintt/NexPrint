@@ -1,4 +1,5 @@
 "use server";
+// v4: Adicionado suporte a regras de exclusão (exclusiveWith)
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -11,7 +12,7 @@ export async function saveTemplate(data: {
   config: any;
   eventId?: string;
   basePrice: number;
-  items: { id: string; isRequired: boolean }[];
+   items: { id: string; isRequired: boolean; isHidden?: boolean; exclusiveWith?: string }[];
 }) {
   try {
     const configJson = JSON.stringify(data.config);
@@ -54,14 +55,14 @@ export async function saveTemplate(data: {
     }
 
     // --- 2. Validar items (filtrar IDs inválidos que não existem no banco) ---
-    let validItems: { id: string; isRequired: boolean }[] = [];
+    let validItems: { id: string; isRequired: boolean; isHidden: boolean; exclusiveWith?: string }[] = [];
     if (data.items && data.items.length > 0) {
       const existingItems = await prisma.badgeItem.findMany({
         where: { id: { in: data.items.map((i) => i.id) } },
         select: { id: true },
       });
       const validIds = new Set(existingItems.map((i) => i.id));
-      validItems = data.items.filter((i) => validIds.has(i.id));
+      validItems = data.items.filter((i) => validIds.has(i.id)).map(i => ({...i, isHidden: !!i.isHidden}));
       console.log(
         `[saveTemplate] Itens solicitados: ${data.items.length}, válidos: ${validItems.length}`,
         validItems.map((i) => `${i.id}(required:${i.isRequired})`)
@@ -89,13 +90,17 @@ export async function saveTemplate(data: {
 
         // Recria com a lista atualizada
         if (validItems.length > 0) {
-          await tx.templateItem.createMany({
-            data: validItems.map((item) => ({
-              templateId: data.id as string,
-              itemId: item.id,
-              isRequired: item.isRequired,
-            })),
-          });
+          for (const item of validItems) {
+            await tx.templateItem.create({
+              data: {
+                templateId: data.id as string,
+                itemId: item.id,
+                isRequired: item.isRequired,
+                isHidden: item.isHidden,
+                exclusiveWith: item.exclusiveWith,
+              }
+            });
+          }
         }
       });
 
@@ -116,13 +121,17 @@ export async function saveTemplate(data: {
         });
 
         if (validItems.length > 0) {
-          await tx.templateItem.createMany({
-            data: validItems.map((item) => ({
-              templateId: newTemplate.id,
-              itemId: item.id,
-              isRequired: item.isRequired,
-            })),
-          });
+          for (const item of validItems) {
+            await tx.templateItem.create({
+              data: {
+                templateId: newTemplate.id,
+                itemId: item.id,
+                isRequired: item.isRequired,
+                isHidden: item.isHidden,
+                exclusiveWith: item.exclusiveWith,
+              }
+            });
+          }
         }
 
         console.log(
@@ -136,6 +145,7 @@ export async function saveTemplate(data: {
     return { success: true };
   } catch (error: any) {
     console.error("CRITICAL SAVE TEMPLATE ERROR:", error);
+    console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     const msg = error?.message || "Erro desconhecido";
     return { success: false, error: `Falha ao salvar: ${msg.substring(0, 200)}` };
   }

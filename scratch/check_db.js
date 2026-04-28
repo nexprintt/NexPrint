@@ -2,12 +2,17 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  const events = await prisma.event.findMany({
-    include: {
-      templates: true
-    }
+  const templates = await prisma.badgeTemplate.findMany({
+    select: { bgImageUrl: true, name: true }
   });
-  console.log(JSON.stringify(events, null, 2));
+  console.log(JSON.stringify(templates, null, 2));
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main()
+  .catch(e => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
