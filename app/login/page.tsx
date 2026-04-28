@@ -37,14 +37,14 @@ export default function LoginPage() {
         <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-[40px] border border-white/10 shadow-2xl">
           <form action={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-300 uppercase tracking-widest pl-2">Usuário</label>
+              <label className="text-xs font-black text-slate-300 uppercase tracking-widest pl-2">E-mail</label>
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-brand-teal transition-all" size={20} />
                 <input
-                  name="username"
-                  type="text"
+                  name="email"
+                  type="email"
                   required
-                  placeholder="Seu usuário"
+                  placeholder="seu@email.com"
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white outline-none focus:border-brand-teal/50 focus:ring-4 focus:ring-brand-teal/10 transition-all font-medium"
                 />
               </div>

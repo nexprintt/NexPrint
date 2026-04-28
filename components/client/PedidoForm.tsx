@@ -25,6 +25,7 @@ import {
   RotateCcw
 } from "lucide-react";
 import { calculateShippingAction } from "@/app/pedido/[slug]/actions";
+import { supabase } from "@/lib/supabase";
 
 interface PedidoFormProps {
   onDataChange: (data: any) => void;
@@ -106,15 +107,28 @@ export default function PedidoForm({
     setFormData((prev) => ({ ...prev, ...updates }));
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        handleUpdate({ photoUrl: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('badge-photos')
+      .upload(filePath, file);
+
+    if (error) {
+      console.error("Erro no upload:", error);
+      return;
     }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('badge-photos')
+      .getPublicUrl(filePath);
+
+    handleUpdate({ photoUrl: publicUrl });
   };
 
   const fetchCep = async (cep: string) => {
