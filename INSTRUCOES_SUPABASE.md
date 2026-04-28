@@ -1,60 +1,124 @@
-# Documentação Técnica para Integração Supabase - NexPrint
+# 📘 Guia Definitivo de Integração Supabase - NexPrint
 
-Este documento serve como guia para o desenvolvedor (ou IA) que irá implementar o Supabase neste projeto.
-
-## 🚀 Estado Atual do Projeto
-O NexPrint é um sistema de gerenciamento e impressão de crachás profissionais em cartões de PVC usando a impressora **Sigma DS3**.
-
-### Stack Principal:
-- **Framework**: Next.js 14 (App Router)
-- **Estilização**: Tailwind CSS + Framer Motion (Design Premium)
-- **Canvas**: Fabric.js v6 (Manipulação das artes dos crachás)
-- **Banco de Dados**: Prisma ORM (Atualmente configurado para SQLite/Postgres)
-- **Hardware**: Integração direta com SDK Sigma DS3 via PowerShell/API local.
+Este é o manual completo, linha por linha, para a transição do banco local/Prisma para o **Supabase**. Todas as variáveis, comandos, arquivos exatos e blocos de código necessários estão detalhados aqui. O projeto atual está 100% estável e pronto para receber essas mudanças sem quebrar as lógicas críticas de negócio e hardware.
 
 ---
 
-## 🛠️ Onde o Supabase deve ser "Plugado"
+## 1. ⚙️ Variáveis de Ambiente (Setup Inicial)
 
-### 1. Banco de Dados (Postgres)
-O projeto já usa Prisma. Para migrar para o Supabase:
-1. Pegue a Connection String no painel do Supabase.
-2. Atualize a `DATABASE_URL` no arquivo `.env`.
-3. Rode `npx prisma db push` para criar as tabelas no Supabase.
-*Dica: Não é necessário abandonar o Prisma, ele funciona perfeitamente com Supabase.*
+Adicione as seguintes variáveis no seu arquivo `.env`:
 
-### 2. Autenticação (Supabase Auth)
-Hoje o sistema tem uma estrutura básica de Admin. Recomenda-se:
-- Implementar `@supabase/auth-helpers-nextjs` para proteger as rotas `/admin/*`.
-- Configurar RLS (Row Level Security) nas tabelas de `Order` e `Template`.
+```env
+# Mantenha o Prisma, apenas mude a URL para o seu Postgres do Supabase
+DATABASE_URL="postgres://postgres.[SUA-REFERENCIA]:[SUA-SENHA]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgres://postgres.[SUA-REFERENCIA]:[SUA-SENHA]@aws-0-sa-east-1.pooler.supabase.com:5432/postgres"
 
-### 3. Armazenamento de Fotos (Supabase Storage)
-Atualmente, as fotos são salvas em `/public/uploads`.
-- **Tarefa**: Criar um bucket chamado `badge-photos`.
-- **Ação**: No componente `PedidoForm.tsx`, alterar o upload para usar `supabase.storage.from('badge-photos').upload()`.
-- O `photoUrl` no banco deve apontar para a URL pública do Supabase.
+# Variáveis do Cliente Supabase (para Auth e Storage no Frontend)
+NEXT_PUBLIC_SUPABASE_URL="https://[SUA-REFERENCIA].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbG..."
+```
 
 ---
 
-## ⚠️ Lógicas Críticas (NÃO ALTERAR SEM REVISÃO)
+## 2. 🗄️ Banco de Dados e Prisma
 
-### Motor de Impressão (`BadgeCanvas.tsx`)
-- **Auto-Shrink**: Existe uma lógica dinâmica que reduz o tamanho da fonte se o nome do participante ultrapassar 85% da largura do crachá. Isso evita erros de impressão física.
-- **DPI**: O canvas é renderizado em 1011x638 para garantir 300/600 DPI na Sigma DS3.
+O sistema já está todo modelado usando **Prisma**. Você **não precisa** reescrever as Server Actions (`app/admin/pedidos/actions.ts`), pois elas continuarão funcionando através do Prisma conectado ao Supabase.
 
-### Fluxo de Impressão (`OrdersTableClient.tsx`)
-- Ao clicar em "Imprimir", o status do pedido muda automaticamente para `PRINTING` ("Em Produção").
-- Existe um **Modal de Preview** antes de enviar para a impressora. O envio final acontece via `/api/printer/control`.
-
-### Hardware (`app/api/printer/control/route.ts`)
-- Este endpoint "conversa" com a impressora Sigma DS3. Ele espera um JSON com `action: "printBatch"`, `value: [base64_images]` e `settings: { highDPI: boolean, monochrome: boolean }`.
+**Ações Necessárias:**
+1. No arquivo `prisma/schema.prisma`, altere o provider:
+```prisma
+datasource db {
+  provider  = "postgresql" // Mude de "sqlite" para "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+```
+2. Delete a pasta `prisma/migrations` (já que estamos mudando de SQLite para Postgres).
+3. Rode o comando no terminal para criar o banco no Supabase:
+```bash
+npx prisma db push
+```
 
 ---
 
-## 📋 Próximos Passos Sugeridos
-1. Configurar as variáveis de ambiente do Supabase (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
-2. Migrar o `schema.prisma` para o Postgres do Supabase.
-3. Implementar o Dashboard em tempo real usando `supabase.channel('orders')` para monitorar novos pedidos.
+## 3. 📸 Migração do Upload de Fotos (Storage)
+
+Atualmente, o arquivo `components/client/PedidoForm.tsx` lê a foto do usuário e a converte para Base64 (linha ~109). Isso não é sustentável em escala.
+
+**O que fazer:**
+1. Crie um bucket público no painel do Supabase chamado `badge-photos`.
+2. Instale o SDK do Supabase: `npm install @supabase/supabase-js`.
+3. Crie um arquivo `lib/supabase.ts`:
+```typescript
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+4. No arquivo `components/client/PedidoForm.tsx`, substitua a função `handlePhotoUpload` atual por esta:
+```typescript
+import { supabase } from "@/lib/supabase";
+
+const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // Mostra um loader visual se quiser...
+  
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Math.random()}.${fileExt}`;
+  const filePath = `${fileName}`;
+
+  const { data, error } = await supabase.storage
+    .from('badge-photos')
+    .upload(filePath, file);
+
+  if (error) {
+    console.error("Erro no upload:", error);
+    return;
+  }
+
+  // Pega a URL pública
+  const { data: { publicUrl } } = supabase.storage
+    .from('badge-photos')
+    .getPublicUrl(filePath);
+
+  // Atualiza o estado do formulário com a URL final
+  handleUpdate({ photoUrl: publicUrl });
+};
+```
 
 ---
-*Documento gerado para auxiliar a transição técnica de backend.*
+
+## 4. 🔐 Autenticação (Admin Auth)
+
+Hoje a rota `/admin` não tem um Auth robusto bloqueando acesso.
+
+**Ação:**
+Implemente o `@supabase/ssr` (ou `@supabase/auth-helpers-nextjs`).
+1. Crie um `middleware.ts` na raiz do projeto.
+2. Use o `createMiddlewareClient` para checar se existe sessão ativa e verificar se o `user.id` corresponde a um admin.
+3. Se não houver sessão, faça redirect para `/login`.
+
+---
+
+## 5. ⚠️ AVISOS CRÍTICOS - NÃO TOQUE NESTAS LÓGICAS ⚠️
+
+Para garantir que a comunicação com a impressora **Sigma DS3** e o layout físico dos crachás não quebrem, **PRESERVE RIGOROSAMENTE** as seguintes partes:
+
+### A. Auto-Shrink e Cálculos do Canvas (`components/canvas/BadgeCanvas.tsx`)
+As funções que calculam a redução da fonte baseada em `displayWidth * 0.85` e a proporção de 1011x638 (`BASE_WIDTH`/`BASE_HEIGHT`) são matematicamente essenciais para que o crachá físico saia legível e na sangria correta.
+
+### B. Hardware API (`app/api/printer/control/route.ts`)
+Este arquivo é uma ponte para um script de PowerShell que controla a Sigma DS3. Ele injeta configurações como `PrinterResolution` e margens absolutas. Não troque a rota ou o formato de payload esperado (`action`, `value`, `orientation`, `settings`).
+
+### C. Fluxo "Auto Em Produção" (`components/admin/OrdersTableClient.tsx`)
+O sistema atualmente muda o status para `PRINTING` (banco de dados) assim que o usuário clica em imprimir. Isso foi validado com o cliente. Mantenha essa chamada para a `bulkUpdateStatus` ou `updateOrderStatus` logo após o fetch para a `/api/printer/control`.
+
+---
+
+## 🚀 Resumo de Deploy
+Se você seguir esses 4 passos (Setup Env, Prisma Postgres, Storage e Middleware de Auth), o sistema se tornará um SaaS pronto para produção, mantendo toda a complexidade de impressão intacta!
