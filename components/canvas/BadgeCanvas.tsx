@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Canvas, FabricImage, FabricText, Rect } from "fabric";
-import { Minus, Plus, Type, MousePointer2 } from "lucide-react";
+import { Minus, Plus, Type, MousePointer2, AlignLeft, AlignCenter } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface BadgeCanvasProps {
@@ -12,8 +12,8 @@ interface BadgeCanvasProps {
   bgImageUrl: string;
   orientation?: "landscape" | "portrait";
   config: {
-    namePos?: { x: number; y: number; fontSize: number; fontFamily: string; color: string; fontWeight?: string; maxWidth?: number };
-    congPos?: { x: number; y: number; fontSize: number; fontFamily: string; color: string; fontWeight?: string; maxWidth?: number };
+    namePos?: { x: number; y: number; fontSize: number; fontFamily: string; color: string; fontWeight?: string; maxWidth?: number; textAlign?: string };
+    congPos?: { x: number; y: number; fontSize: number; fontFamily: string; color: string; fontWeight?: string; maxWidth?: number; textAlign?: string };
     photoPos?: { x: number; y: number; width: number; height: number; shape: "circle" | "square" | "portrait" };
     orientation?: string;
     previewName?: string;
@@ -46,6 +46,7 @@ const GOOGLE_FONTS = [
 
 // Injeta o CSS da fonte dinamicamente se ainda não existir
 const loadGoogleFont = (fontName: string) => {
+  if (typeof document === 'undefined') return;
   const fontId = `google-font-${fontName.replace(/\s+/g, '-')}`;
   if (!document.getElementById(fontId)) {
     const link = document.createElement("link");
@@ -53,6 +54,24 @@ const loadGoogleFont = (fontName: string) => {
     link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700;800;900&display=swap`;
     link.rel = "stylesheet";
     document.head.appendChild(link);
+
+    // Forçar o navegador a baixar a fonte imediatamente inserindo no DOM invisível
+    const forceLoadDiv = document.createElement("div");
+    forceLoadDiv.style.fontFamily = `"${fontName}"`;
+    forceLoadDiv.style.position = "absolute";
+    forceLoadDiv.style.opacity = "0";
+    forceLoadDiv.style.pointerEvents = "none";
+    forceLoadDiv.style.width = "0";
+    forceLoadDiv.style.height = "0";
+    forceLoadDiv.style.overflow = "hidden";
+    
+    forceLoadDiv.innerHTML = `
+      <span style="font-weight: 400">font</span>
+      <span style="font-weight: 700">font</span>
+      <span style="font-weight: 800">font</span>
+      <span style="font-weight: 900">font</span>
+    `;
+    document.body.appendChild(forceLoadDiv);
   }
 };
 
@@ -81,6 +100,7 @@ export default function BadgeCanvas({
   const [currentFont, setCurrentFont] = useState("Inter");
   const [currentSize, setCurrentSize] = useState(14);
   const [isBold, setIsBold] = useState(true);
+  const [currentAlign, setCurrentAlign] = useState<"left" | "center">("left");
 
   const BASE_WIDTH = 1011;
   const BASE_HEIGHT = 638;
@@ -141,14 +161,19 @@ export default function BadgeCanvas({
       const nameColor = config?.namePos?.color || "#000000";
 
       // Segurança: Se estiver fora do canvas, traz para o centro
-      const finalNameX = (config?.namePos?.x && config.namePos.x < BASE_WIDTH) ? (config.namePos.x * scaleFactorX) : centerX;
+      const defaultX = BASE_WIDTH * 0.11; // 11% da margem esquerda
+
+      const finalNameX = (config?.namePos?.x && config.namePos.x < BASE_WIDTH) ? (config.namePos.x * scaleFactorX) : (defaultX * scaleFactorX);
       const finalNameY = (config?.namePos?.y && config.namePos.y < BASE_HEIGHT) ? (config.namePos.y * scaleFactorY) : (isPortrait ? displayHeight * 0.62 : displayHeight * 0.72);
+
+      const isLegacyName = config?.namePos && !config?.namePos?.textAlign;
+      const nameAlign = config?.namePos?.textAlign || (isLegacyName ? "center" : "left");
 
       const nameText = new FabricText(name || config?.previewName || "NOME DO PARTICIPANTE", {
         left: finalNameX, top: finalNameY,
-        fontFamily: `${nameFont}, sans-serif`, fontWeight: config?.namePos?.fontWeight || "900", fontSize: nameSize,
-        fill: nameColor, textAlign: "center",
-        originX: "center", originY: "center",
+        fontFamily: `${nameFont}, sans-serif`, fontWeight: config?.namePos?.fontWeight || "800", fontSize: nameSize,
+        fill: nameColor, textAlign: nameAlign as any,
+        originX: nameAlign as any, originY: "center",
         selectable: interactive, hasControls: false, objectCaching: false,
         lockRotation: true, lockScalingX: true, lockScalingY: true, lockMovementY: lockVertical,
         hoverCursor: interactive ? "grab" : "default", moveCursor: interactive ? "grabbing" : "default",
@@ -161,14 +186,17 @@ export default function BadgeCanvas({
       const congSize = config?.congPos?.fontSize ? (config.congPos.fontSize * scaleFactorX) : (50 * scaleFactorX);
       const congColor = config?.congPos?.color || "#000000";
 
-      const finalCongX = (config?.congPos?.x && config.congPos.x < BASE_WIDTH) ? (config.congPos.x * scaleFactorX) : centerX;
+      const finalCongX = (config?.congPos?.x && config.congPos.x < BASE_WIDTH) ? (config.congPos.x * scaleFactorX) : (defaultX * scaleFactorX);
       const finalCongY = (config?.congPos?.y && config.congPos.y < BASE_HEIGHT) ? (config.congPos.y * scaleFactorY) : (isPortrait ? displayHeight * 0.78 : displayHeight * 0.87);
+
+      const isLegacyCong = config?.congPos && !config?.congPos?.textAlign;
+      const congAlign = config?.congPos?.textAlign || (isLegacyCong ? "center" : "left");
 
       const congText = new FabricText(congregation || config?.previewCongregation || "CONGREGAÇÃO", {
         left: finalCongX, top: finalCongY,
-        fontFamily: `${congFont}, sans-serif`, fontWeight: config?.congPos?.fontWeight || "700", fontSize: congSize,
-        fill: congColor, textAlign: "center",
-        originX: "center", originY: "center",
+        fontFamily: `${congFont}, sans-serif`, fontWeight: config?.congPos?.fontWeight || "800", fontSize: congSize,
+        fill: congColor, textAlign: congAlign as any,
+        originX: congAlign as any, originY: "center",
         selectable: interactive, hasControls: false, objectCaching: false,
         lockRotation: true, lockScalingX: true, lockScalingY: true, lockMovementY: lockVertical,
         hoverCursor: interactive ? "grab" : "default", moveCursor: interactive ? "grabbing" : "default",
@@ -188,6 +216,7 @@ export default function BadgeCanvas({
             setCurrentFont(obj.fontFamily || "Inter");
             setCurrentSize(Math.round(obj.fontSize || defaultFontSize));
             setIsBold(obj.fontWeight === "900" || obj.fontWeight === "bold" || obj.fontWeight === "800");
+            setCurrentAlign(obj.textAlign === "center" ? "center" : "left");
             obj.set({ shadow: { color: "rgba(15, 23, 42, 0.4)", blur: 8, offsetX: 0, offsetY: 4 } as any });
             canvas.renderAll();
           } else {
@@ -205,10 +234,23 @@ export default function BadgeCanvas({
         canvas.on("object:moving", (e) => {
           const obj = e.target;
           if (!obj) return;
-          if (Math.abs(obj.left! - centerX) < 12) obj.set({ left: centerX });
-          const w2 = (obj.width! * (obj.scaleX || 1)) / 2;
-          if (obj.left! - w2 < 10) obj.set({ left: w2 + 10 });
-          if (obj.left! + w2 > displayWidth - 10) obj.set({ left: displayWidth - w2 - 10 });
+
+          const scaleX = obj.scaleX || 1;
+          const w = obj.width! * scaleX;
+          const isCenter = obj.originX === "center";
+          
+          // Snapping to center
+          const objCenter = isCenter ? obj.left! : obj.left! + w / 2;
+          if (Math.abs(objCenter - centerX) < 12) {
+            obj.set({ left: isCenter ? centerX : centerX - w / 2 });
+          }
+
+          // Boundaries
+          const minLeft = isCenter ? w / 2 + 10 : 10;
+          const maxLeft = isCenter ? displayWidth - w / 2 - 10 : displayWidth - w - 10;
+          
+          if (obj.left! < minLeft) obj.set({ left: minLeft });
+          if (obj.left! > maxLeft) obj.set({ left: maxLeft });
         });
 
         canvas.on("mouse:up", () => {
@@ -230,7 +272,8 @@ export default function BadgeCanvas({
               fontSize: Math.round(newNameSize * invScaleX),
               fontFamily: nameText.fontFamily?.split(',')[0], // Remove fallback para salvar
               fontWeight: nameText.fontWeight,
-              color: nameText.fill
+              color: nameText.fill,
+              textAlign: nameText.textAlign
             },
             congPos: {
               ...(config.congPos || {}),
@@ -239,7 +282,8 @@ export default function BadgeCanvas({
               fontSize: Math.round(newCongSize * invScaleX),
               fontFamily: congText.fontFamily?.split(',')[0], // Remove fallback para salvar
               fontWeight: congText.fontWeight,
-              color: congText.fill
+              color: congText.fill,
+              textAlign: congText.textAlign
             }
           });
         });
@@ -413,13 +457,13 @@ export default function BadgeCanvas({
       nameObj.set({
         text: name || config?.previewName || "NOME DO PARTICIPANTE",
         fill: config?.namePos?.color || "#000000",
-        fontWeight: config?.namePos?.fontWeight || "900",
+        fontWeight: config?.namePos?.fontWeight || "800",
         fontFamily: `${nameFont}, sans-serif`
       });
       congObj.set({
         text: congregation || config?.previewCongregation || "CONGREGAÇÃO",
         fill: config?.congPos?.color || "#000000",
-        fontWeight: config?.congPos?.fontWeight || "700",
+        fontWeight: config?.congPos?.fontWeight || "800",
         fontFamily: `${congFont}, sans-serif`
       });
 
@@ -457,6 +501,7 @@ export default function BadgeCanvas({
         setCurrentSize(Math.round(activeObj.fontSize || 14));
         setCurrentFont(activeObj.fontFamily?.split(',')[0].replace(/['"]/g, '') || "Inter");
         setIsBold(activeObj.fontWeight === "900" || activeObj.fontWeight === "bold" || activeObj.fontWeight === "800");
+        setCurrentAlign(activeObj.textAlign === "center" ? "center" : "left");
       }
 
       canvas.renderAll();
@@ -494,13 +539,15 @@ export default function BadgeCanvas({
             x: Math.round(nameText.left! * invScaleX), y: Math.round(nameText.top! * invScaleY),
             fontSize: Math.round((nameText.fontSize || 14) * invScaleX),
             fontFamily: nameText.fontFamily?.split(',')[0].replace(/['"]/g, ''), 
-            fontWeight: nameText.fontWeight, color: nameText.fill
+            fontWeight: nameText.fontWeight, color: nameText.fill,
+            textAlign: nameText.textAlign
           },
           congPos: {
             x: Math.round(congText.left! * invScaleX), y: Math.round(congText.top! * invScaleY),
             fontSize: Math.round((congText.fontSize || 14) * invScaleX),
             fontFamily: congText.fontFamily?.split(',')[0].replace(/['"]/g, ''), 
-            fontWeight: congText.fontWeight, color: congText.fill
+            fontWeight: congText.fontWeight, color: congText.fill,
+            textAlign: congText.textAlign
           }
         });
       }
@@ -512,17 +559,10 @@ export default function BadgeCanvas({
     loadGoogleFont(font);
     setCurrentFont(font);
     
-    // Aguarda a fonte carregar de verdade no navegador antes de aplicar ao canvas
-    if (typeof document !== 'undefined' && 'fonts' in document) {
-      (document.fonts as any).load(`1em "${font}"`).then(() => {
-        updateSelectedObject({ fontFamily: `${font}, sans-serif` });
-      }).catch(() => {
-        // Fallback caso falhe o carregamento específico
-        updateSelectedObject({ fontFamily: `${font}, sans-serif` });
-      });
-    } else {
+    // Aguarda um instante para o navegador parsear a fonte injetada no DOM invisível
+    setTimeout(() => {
       updateSelectedObject({ fontFamily: `${font}, sans-serif` });
-    }
+    }, 150);
   };
 
   const alterSize = (delta: number) => {
@@ -534,7 +574,13 @@ export default function BadgeCanvas({
   const toggleBold = () => {
     const nextBold = !isBold;
     setIsBold(nextBold);
-    updateSelectedObject({ fontWeight: nextBold ? (selectedObjectId === "name" ? "900" : "800") : "normal" });
+    updateSelectedObject({ fontWeight: nextBold ? "800" : "normal" });
+  };
+
+  const toggleAlign = () => {
+    const nextAlign = currentAlign === "left" ? "center" : "left";
+    setCurrentAlign(nextAlign);
+    updateSelectedObject({ textAlign: nextAlign as any, originX: nextAlign as any });
   };
 
   return (
@@ -609,6 +655,15 @@ export default function BadgeCanvas({
               title="Alternar Negrito"
             >
               <span className="font-black text-base">B</span>
+            </button>
+
+            {/* Toggle Align */}
+            <button
+              onClick={toggleAlign}
+              className="w-10 h-10 flex items-center justify-center rounded-xl transition-all border bg-slate-800 text-slate-400 border-white/5 hover:text-white"
+              title={currentAlign === "left" ? "Alinhar ao Centro" : "Alinhar à Esquerda"}
+            >
+              {currentAlign === "left" ? <AlignLeft size={18} strokeWidth={3} /> : <AlignCenter size={18} strokeWidth={3} />}
             </button>
 
             {/* Separator */}

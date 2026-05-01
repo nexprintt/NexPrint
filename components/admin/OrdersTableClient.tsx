@@ -84,12 +84,8 @@ export default function OrdersTableClient({ initialOrders }: OrdersTableClientPr
     }
   };
 
-  // Ordenar para agrupar famílias
+  // Ordenar puramente do mais novo para o mais antigo
   const sortedOrders = [...initialOrders].sort((a, b) => {
-    if (a.groupId && b.groupId && a.groupId === b.groupId) return 0;
-    if (a.groupId && b.groupId) return a.groupId.localeCompare(b.groupId);
-    if (a.groupId) return -1;
-    if (b.groupId) return 1;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -675,6 +671,7 @@ export default function OrdersTableClient({ initialOrders }: OrdersTableClientPr
                    </div>
                 </th>
                 <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente / Família</th>
+                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data / Hora</th>
                 <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Pagamento</th>
                 <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Local / Congregação</th>
                 <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Itens</th>
@@ -725,6 +722,13 @@ export default function OrdersTableClient({ initialOrders }: OrdersTableClientPr
                       </div>
                     </td>
                     
+                    <td className="px-6 py-6 border-b border-slate-50" onClick={() => setSelectedOrder(mainOrder)}>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-black text-brand-navy">{new Date(mainOrder.createdAt).toLocaleDateString('pt-BR')}</span>
+                        <span className="text-[10px] text-slate-400 font-bold">{new Date(mainOrder.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
+                      </div>
+                    </td>
+
                     <td className="px-6 py-6 border-b border-slate-50 text-center">
                        <div className="flex flex-col items-center gap-1.5">
                          <span className="text-[11px] font-black text-brand-navy bg-slate-50 px-2 py-0.5 rounded-md">

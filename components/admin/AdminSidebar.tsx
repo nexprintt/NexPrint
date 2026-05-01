@@ -110,7 +110,7 @@ export default function AdminSidebar() {
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 bg-brand-navy text-white flex flex-col gap-10 transition-all duration-300 lg:static lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 bg-brand-navy text-white flex flex-col gap-10 transition-all duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
         isCollapsed ? "w-24 p-5 items-center" : "w-72 p-8",
         isOpen ? "translate-x-0 shadow-2xl shadow-black/50" : "-translate-x-full"
       )}>

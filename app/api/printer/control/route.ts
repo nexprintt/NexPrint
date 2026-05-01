@@ -121,7 +121,7 @@ export async function POST(request: Request) {
             Add-Type -AssemblyName System.Windows.Forms;
             $printerName = "${PRINTER_NAME}";
             $imagePaths = ${pathsArrayPS};
-            $currentIndex = 0;
+            $script:currentIndex = 0;
             
             $doc = New-Object System.Drawing.Printing.PrintDocument;
             $doc.PrinterSettings.PrinterName = $printerName;
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
             $doc.add_PrintPage({
               param($sender, $e);
               
-              $currentPath = $imagePaths[$currentIndex];
+              $currentPath = $imagePaths[$script:currentIndex];
               $img = [System.Drawing.Image]::FromFile($currentPath);
               $rect = New-Object System.Drawing.Rectangle(0, 0, $e.PageBounds.Width, $e.PageBounds.Height);
               
