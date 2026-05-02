@@ -5,19 +5,13 @@ import { motion } from "framer-motion";
 import { ArrowRight, Ticket, Sparkles, Layout } from "lucide-react";
 import Link from "next/link";
 import TemplateSelector from "./TemplateSelector";
-import { useRouter } from "next/navigation";
 
 interface LandingHeroProps {
   event: any; 
 }
 
 export default function LandingHero({ event }: LandingHeroProps) {
-  const router = useRouter();
   const activeTemplates = event?.templates || [];
-
-  const handleSelectTemplate = (templateId: string) => {
-    router.push(`/pedido/${event.slug}?templateId=${templateId}`);
-  };
 
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-brand-teal/20 overflow-x-hidden relative font-outfit">
@@ -54,7 +48,7 @@ export default function LandingHero({ event }: LandingHeroProps) {
           {event && activeTemplates.length > 0 ? (
             <TemplateSelector 
               templates={activeTemplates} 
-              onSelect={handleSelectTemplate}
+              eventSlug={event.slug}
             />
           ) : (
             <div className="max-w-2xl mx-auto py-20 bg-slate-50 border border-slate-200 rounded-[40px] text-center">

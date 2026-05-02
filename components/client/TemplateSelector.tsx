@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useTransition, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, ArrowRight, CreditCard, Clock } from "lucide-react";
-import Image from "next/image";
+import { Check, ArrowRight, CreditCard, Clock, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import TemplateImage from "./TemplateImage";
 
 interface Template {
@@ -15,65 +15,112 @@ interface Template {
 
 interface TemplateSelectorProps {
   templates: Template[];
-  onSelect: (templateId: string) => void;
+  eventSlug: string;
 }
 
-export default function TemplateSelector({ templates, onSelect }: TemplateSelectorProps) {
+export default function TemplateSelector({ templates, eventSlug }: TemplateSelectorProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [clickedId, setClickedId] = useState<string | null>(null);
+
+  function handleNavigate(templateId: string) {
+    setClickedId(templateId);
+    startTransition(() => {
+      router.push(`/pedido/${eventSlug}?templateId=${templateId}`);
+    });
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4">
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {templates.map((template, idx) => (
-          <motion.div
-            key={template.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            whileHover={{ y: -8 }}
-            onClick={() => onSelect(template.id)}
-            className="group cursor-pointer relative bg-white border-2 border-slate-200 rounded-[40px] overflow-hidden hover:border-brand-teal hover:shadow-2xl transition-all duration-300"
-          >
-            {/* Imagem de Fundo com Overlay */}
-            <div className="aspect-[1011/638] relative overflow-hidden bg-slate-100 border-b-2 border-slate-100">
-              <TemplateImage
-                src={template.bgImageUrl}
-                alt={template.name}
-                fill
-                className="transition-transform duration-700 group-hover:scale-105"
-              />
-            </div>
+        {templates.map((template, idx) => {
+          const isLoading = isPending && clickedId === template.id;
 
-            {/* Conteúdo do Card */}
-            <div className="p-6 md:p-8">
-              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
-                <div className="space-y-3">
-                  <h3 className="text-xl md:text-2xl font-black text-slate-900 group-hover:text-brand-teal transition-colors leading-tight">
-                    {template.name}
-                  </h3>
-                  <div className="flex flex-wrap items-center gap-3 md:gap-4 text-slate-500">
-                    <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest whitespace-nowrap">
-                      <Clock size={14} className="text-brand-teal" /> Rápido
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest whitespace-nowrap">
-                      <Check size={14} className="text-brand-teal" /> Qualidade
-                    </span>
+          return (
+            <motion.div
+              key={template.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              whileHover={isLoading ? {} : { y: -8 }}
+              className={`group relative ${isLoading ? "pointer-events-none" : ""}`}
+            >
+              <button
+                type="button"
+                onClick={() => handleNavigate(template.id)}
+                disabled={isPending}
+                className={`block w-full text-left bg-white border-2 rounded-[40px] overflow-hidden transition-all duration-300 cursor-pointer ${
+                  isLoading
+                    ? "border-brand-teal shadow-2xl shadow-brand-teal/20 scale-[0.98]"
+                    : "border-slate-200 hover:border-brand-teal hover:shadow-2xl"
+                }`}
+              >
+                {/* Imagem de Fundo com Overlay */}
+                <div className={`aspect-[1011/638] relative overflow-hidden bg-slate-100 border-b-2 border-slate-100 ${isLoading ? "opacity-70" : ""}`}>
+                  <TemplateImage
+                    src={template.bgImageUrl}
+                    alt={template.name}
+                    fill
+                    className="transition-transform duration-700 group-hover:scale-105"
+                  />
+                  {isLoading && (
+                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-white/90 shadow-xl flex items-center justify-center">
+                        <Loader2 size={28} className="animate-spin text-brand-teal" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Conteúdo do Card */}
+                <div className="p-6 md:p-8">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
+                    <div className="space-y-3">
+                      <h3 className="text-xl md:text-2xl font-black text-slate-900 group-hover:text-brand-teal transition-colors leading-tight">
+                        {template.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-3 md:gap-4 text-slate-500">
+                        <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest whitespace-nowrap">
+                          <Clock size={14} className="text-brand-teal" /> Rápido
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest whitespace-nowrap">
+                          <Check size={14} className="text-brand-teal" /> Qualidade
+                        </span>
+                      </div>
+                    </div>
+                    <div className="px-4 py-2 bg-slate-100 text-slate-900 rounded-xl font-black text-xs md:text-sm shrink-0 shadow-sm border border-slate-200/50">
+                      {template.basePrice > 0 ? `R$ ${template.basePrice.toFixed(2)}` : "GRÁTIS"}
+                    </div>
+                  </div>
+
+                  {/* Botão de Ação Gigante - Muda de estado INSTANTANEAMENTE */}
+                  <div className={`w-full flex items-center justify-center gap-4 p-6 rounded-2xl transition-all duration-300 shadow-lg mt-4 ${
+                    isLoading
+                      ? "bg-slate-900 shadow-slate-900/20 scale-100"
+                      : "bg-brand-teal hover:bg-brand-teal-dark shadow-brand-teal/20 group-hover:scale-[1.02]"
+                  }`}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 size={24} className="animate-spin text-white" />
+                        <span className="text-lg md:text-xl font-black uppercase tracking-widest text-white">
+                          Preparando...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg md:text-xl font-black uppercase tracking-widest text-slate-900">
+                          Criar Este Crachá
+                        </span>
+                        <ArrowRight size={24} className="text-slate-900" />
+                      </>
+                    )}
                   </div>
                 </div>
-                <div className="px-4 py-2 bg-slate-100 text-slate-900 rounded-xl font-black text-xs md:text-sm shrink-0 shadow-sm border border-slate-200/50">
-                  {template.basePrice > 0 ? `R$ ${template.basePrice.toFixed(2)}` : "GRÁTIS"}
-                </div>
-              </div>
-
-              {/* Botão de Ação Gigante */}
-              <div className="w-full flex items-center justify-center gap-4 p-6 bg-brand-teal hover:bg-brand-teal-dark rounded-2xl transition-all duration-300 shadow-lg shadow-brand-teal/20 mt-4 group-hover:scale-[1.02]">
-                <span className="text-lg md:text-xl font-black uppercase tracking-widest text-slate-900">
-                  Criar Este Crachá
-                </span>
-                <ArrowRight size={24} className="text-slate-900" />
-              </div>
-            </div>
-          </motion.div>
-        ))}
+              </button>
+            </motion.div>
+          );
+        })}
       </div>
 
       <div className="mt-12 md:mt-20 text-center pb-12 overflow-x-hidden">
