@@ -30,7 +30,7 @@ export default function BadgePedidoClient({ event, template, config }: BadgePedi
   const [mainStep, setMainStep] = useState<"init" | "members" | "summary" | "preview">("init");
   const [phone, setPhone] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── membros já confirmados ──────────────────────────────
@@ -202,8 +202,8 @@ export default function BadgePedidoClient({ event, template, config }: BadgePedi
             </div>
           </div>
 
-          <button disabled={!isPhoneValid} onClick={startMemberFlow}
-            className={`w-full py-5 md:py-6 rounded-2xl font-black text-xl md:text-2xl flex items-center justify-center gap-3 md:gap-4 transition-all ${isPhoneValid ? "bg-brand-teal text-slate-900 hover:scale-[1.02] shadow-xl" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}>
+          <button disabled={!isPhoneValid || !paymentMethod} onClick={startMemberFlow}
+            className={`w-full py-5 md:py-6 rounded-2xl font-black text-xl md:text-2xl flex items-center justify-center gap-3 md:gap-4 transition-all ${isPhoneValid && paymentMethod ? "bg-brand-teal text-slate-900 hover:scale-[1.02] shadow-xl" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}>
             Preencher os Crachás <ArrowRight size={28} className="shrink-0" />
           </button>
         </div>
