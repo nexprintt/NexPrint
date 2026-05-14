@@ -5,7 +5,7 @@
 
 import fetch from "node-fetch"; // Precisaria ser instalado no ambiente local
 
-const API_URL = "http://localhost:3000/api/print-agent/queue";
+const API_URL = "https://nexprint.alvanex.com.br/api/print-agent/queue";
 
 async function pollQueue() {
   console.log("Checking for new badges to print...");

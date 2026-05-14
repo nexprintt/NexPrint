@@ -66,7 +66,7 @@ export default function LandingHero({ event }: LandingHeroProps) {
           {/* Botão de WhatsApp Integrado */}
           <div className="mb-12">
             <a 
-              href="https://wa.me/553173211332?text=Olá! Estou no site da NexPrint e gostaria de tirar uma dúvida."
+              href="https://api.whatsapp.com/send?phone=553173211332&text=Olá! Estou no site da NexPrint e gostaria de tirar uma dúvida."
               target="_blank"
               rel="noopener noreferrer"
               className="group relative flex items-center gap-6 px-10 py-6 bg-white border-2 border-slate-200 hover:border-brand-teal rounded-[32px] transition-all shadow-sm hover:shadow-xl"

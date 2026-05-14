@@ -128,8 +128,12 @@ export default function BadgePedidoClient({ event, template, config }: BadgePedi
       txt += `  Valor: R$ ${memberTotal(m).toFixed(2)}\n\n`;
     });
     txt += `*TOTAL: R$ ${grandTotal().toFixed(2)}*`;
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(txt)}`, "_blank");
-    setTimeout(() => { window.location.href = "/"; }, 1500);
+
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent(txt)}`;
+    
+    // No iPhone/Safari, window.open é bloqueado após chamadas assíncronas.
+    // Usamos window.location.href para garantir que o redirecionamento funcione.
+    window.location.href = whatsappUrl;
   };
 
   const handleSubmit = async () => {

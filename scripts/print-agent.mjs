@@ -27,7 +27,7 @@ const execAsync = promisify(exec);
 
 const CONFIG = {
   // API do NexPrint (quando rodando local)
-  API_BASE: process.env.NEXPRINT_API || "http://localhost:3000",
+  API_BASE: process.env.NEXPRINT_API || "https://nexprint.alvanex.com.br",
 
   // SDK da Sigma DS3
   SDK_PATH: String.raw`c:\Users\bruno\Desktop\sigma ds2\XPS_Card_Printer_SDK_v8.7_RevB\exes\csharp\AnyCPU`,

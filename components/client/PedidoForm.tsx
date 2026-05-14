@@ -813,7 +813,7 @@ export default function PedidoForm({
       {/* WhatsApp Support Button */}
       <div className="mt-8 flex justify-center pb-4">
         <a 
-          href="https://wa.me/5531999999999" 
+          href="https://api.whatsapp.com/send?phone=553173211332" 
           target="_blank" 
           rel="noopener noreferrer"
           className="px-6 py-2 rounded-full bg-[#09151c]/50 border border-white/5 text-slate-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all hover:text-white group"

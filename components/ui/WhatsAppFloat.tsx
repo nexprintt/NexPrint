@@ -6,7 +6,7 @@ import { MessageCircle } from "lucide-react";
 export default function WhatsAppFloat() {
   const phone = "553173211332";
   const message = encodeURIComponent("Olá! Estou no site da NexPrint e gostaria de tirar uma dúvida.");
-  const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
+  const whatsappUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${message}`;
 
   return (
     <a

@@ -69,7 +69,7 @@ export default async function Page({
         {/* Botão de WhatsApp */}
         <div className="mt-16 mb-8 flex justify-center">
           <a
-            href="https://wa.me/5531999999999"
+            href="https://api.whatsapp.com/send?phone=553173211332"
             target="_blank"
             className="flex items-center gap-3 px-8 py-4 rounded-full border-2 border-slate-200 hover:border-green-500 hover:text-green-600 transition-colors bg-white text-slate-600 text-sm font-bold uppercase tracking-widest shadow-sm hover:shadow-lg"
           >

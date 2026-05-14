@@ -35,7 +35,7 @@ export default function OrderDetailsModal({ order: initialOrder, groupOrders = [
 
   const formatWhatsApp = (phone: string) => {
     const clean = phone.replace(/\D/g, "");
-    return `https://wa.me/55${clean}`;
+    return `https://api.whatsapp.com/send?phone=55${clean}`;
   };
 
   // Injeta o CSS da fonte dinamicamente se ainda não existir
