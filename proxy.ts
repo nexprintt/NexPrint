@@ -59,6 +59,26 @@ export async function proxy(request: NextRequest) {
 
   const isLoginPage = request.nextUrl.pathname === '/login';
   const isAdminPath = request.nextUrl.pathname.startsWith('/admin');
+  const isApiPath = request.nextUrl.pathname.startsWith('/api');
+
+  // Bypass para rotas públicas de webhook (se houver)
+  if (request.nextUrl.pathname.startsWith('/api/webhook')) return response;
+
+  // Verificação de API Key para rotas de backend (Agent)
+  if (isApiPath) {
+    const AGENT_SECRET = process.env.PRINT_AGENT_SECRET_KEY || "nexprint_local_agent_secret_2024";
+    const authHeader = request.headers.get("authorization");
+    
+    // Se enviou o token do agent corretamente, deixa passar
+    if (authHeader === `Bearer ${AGENT_SECRET}`) {
+      return response;
+    }
+    
+    // Se não enviou o token, exigimos que o usuário esteja logado
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
 
   // Se tentar acessar /admin sem usuário, vai para login
   if (isAdminPath && !user) {
@@ -74,6 +94,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login'],
+  matcher: ['/admin/:path*', '/login', '/api/:path*'],
 };
 
