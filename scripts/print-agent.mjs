@@ -75,7 +75,10 @@ async function apiRequest(endpoint, method = "GET", body = null) {
   const url = `${CONFIG.API_BASE}${endpoint}`;
   const options = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.PRINT_AGENT_SECRET_KEY || "nexprint_local_agent_secret_2024"}`
+    },
   };
   if (body) options.body = JSON.stringify(body);
 

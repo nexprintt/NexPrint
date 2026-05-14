@@ -2,7 +2,17 @@
 
 import prisma from "@/lib/prisma";
 
+import { createClient } from "@/utils/supabase/server";
+
+async function requireAuth() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+}
+
 export async function getDashboardData() {
+  await requireAuth();
+  
   const ordersCount = await prisma.order.count();
   const totalFaturamento = await prisma.order.aggregate({
     _sum: { totalAmount: true },
@@ -51,6 +61,7 @@ export async function getDashboardData() {
 }
 
 export async function getOrders() {
+  await requireAuth();
   return prisma.order.findMany({
     include: {
       event: true,
@@ -64,6 +75,7 @@ export async function getOrders() {
 }
 
 export async function getClientes() {
+  await requireAuth();
   return prisma.order.findMany({
     select: {
       clientName: true,
@@ -77,6 +89,7 @@ export async function getClientes() {
 }
 
 export async function getItens() {
+  await requireAuth();
   return prisma.badgeItem.findMany({
     orderBy: { name: 'asc' }
   });
