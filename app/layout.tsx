@@ -14,8 +14,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "NexPrint | Sistema de Crachás de Alta Performance",
-  description: "Crie e gerencie seus crachás com qualidade premium e agilidade.",
+  title: "NexPrint | Crachás Personalizados de Forma Rápida e Simples",
+  description: "Peça seu crachá de forma rápida, personalizada e sem complicações. Qualidade premium com agilidade total.",
 };
 
 import { ToastProvider } from "@/components/ui/Toast";
