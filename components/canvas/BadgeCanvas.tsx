@@ -371,7 +371,22 @@ export default function BadgeCanvas({
           const pdfjsLib = (window as any).pdfjsLib;
           if (pdfjsLib) {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            const pdf = await pdfjsLib.getDocument(url).promise;
+            
+            let pdfParams: any;
+            if (url.startsWith("data:application/pdf;base64,")) {
+              const base64Content = url.split(",")[1];
+              const binaryString = window.atob(base64Content);
+              const len = binaryString.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              pdfParams = { data: bytes };
+            } else {
+              pdfParams = { url };
+            }
+
+            const pdf = await pdfjsLib.getDocument(pdfParams).promise;
             const page = await pdf.getPage(1);
 
             const originalViewport = page.getViewport({ scale: 1 });

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, User, Phone, MapPin, Truck, CreditCard, Package, Printer, ExternalLink } from "lucide-react";
-import { motion } from "framer-motion";
+import { X, User, Phone, MapPin, Truck, CreditCard, Package, Printer, ExternalLink, Edit } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import EditBadgeModal from "./EditBadgeModal";
 
 interface OrderDetailsModalProps {
   order: any;
@@ -13,15 +14,26 @@ interface OrderDetailsModalProps {
 
 export default function OrderDetailsModal({ order: initialOrder, groupOrders = [], onClose }: OrderDetailsModalProps) {
   const [activeOrder, setActiveOrder] = useState(initialOrder);
+  const [currentGroupOrders, setCurrentGroupOrders] = useState(groupOrders);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     setActiveOrder(initialOrder);
-  }, [initialOrder]);
+    setCurrentGroupOrders(groupOrders);
+  }, [initialOrder, groupOrders]);
 
   if (!activeOrder) return null;
 
   const order = activeOrder;
-  const realGroupOrders = groupOrders.length > 0 ? groupOrders : [initialOrder];
+  const realGroupOrders = currentGroupOrders.length > 0 ? currentGroupOrders : [initialOrder];
+
+  const handleBadgeSave = (updatedOrder: any) => {
+    setActiveOrder(updatedOrder);
+    setCurrentGroupOrders((prev) => {
+      if (prev.length === 0) return [updatedOrder];
+      return prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o));
+    });
+  };
 
   // Parsing crachá config
   let badgeConfig = null;
@@ -238,14 +250,21 @@ export default function OrderDetailsModal({ order: initialOrder, groupOrders = [
                     <Package size={18} strokeWidth={2.5} />
                     <h3 className="font-black uppercase tracking-wider text-[10px]">Dossiê Visual do Crachá</h3>
                   </div>
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-brand-teal hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all border border-slate-200/50 hover:border-transparent shadow-sm"
+                  >
+                    <Edit size={12} />
+                    Editar Crachá
+                  </button>
                 </div>
 
                 {/* O crachá renderizado (Mini Preview) */}
                 <div className="relative group w-full aspect-[1.586/1] bg-slate-100 rounded-[32px] overflow-hidden border-4 border-white shadow-xl shadow-slate-200/50 container-badge">
-                  {order.template?.backgroundUrl ? (
+                  {order.template?.bgImageUrl ? (
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
                       <img
-                        src={order.template.backgroundUrl}
+                        src={order.template.bgImageUrl}
                         alt="Badge Background"
                         className={`w-full h-full object-cover ${badgeConfig?.orientation === 'landscape' ? '' : 'rotate-90'}`}
                       />
@@ -314,6 +333,16 @@ export default function OrderDetailsModal({ order: initialOrder, groupOrders = [
           </a>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {showEditModal && (
+          <EditBadgeModal
+            order={order}
+            onClose={() => setShowEditModal(false)}
+            onSave={handleBadgeSave}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

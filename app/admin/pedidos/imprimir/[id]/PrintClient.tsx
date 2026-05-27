@@ -7,6 +7,7 @@ import BadgeCanvas from "@/components/canvas/BadgeCanvas";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { updateOrderStatus } from "@/app/admin/pedidos/actions";
+import { toast } from "sonner";
 
 interface PrintClientProps {
   order: any;
@@ -70,30 +71,56 @@ export default function PrintClient({ order }: PrintClientProps) {
 
       const badgeOrientation = badgeConfig.orientation || order.template.orientation || "landscape";
 
-      const res = await fetch("/api/printer/control", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          action: "printImage", 
-          value: base64Image,
-          orientation: badgeOrientation,
-          settings: printSettings
-        }),
-      });
+      const isLocalhost = typeof window !== "undefined" && 
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-      const data = await res.json();
-      if (data.success) {
-        // Atualizar status no banco para "PRINTING" (Em Produção)
-        await updateOrderStatus(order.id, { status: "PRINTING" });
-        
-        setStatus("success");
-        // Volta para a lista após 3 segundos
-        setTimeout(() => {
-           window.location.href = "/admin/pedidos";
-        }, 3000);
+      if (isLocalhost) {
+        const res = await fetch("/api/printer/control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            action: "printImage", 
+            value: base64Image,
+            orientation: badgeOrientation,
+            settings: printSettings
+          }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          await updateOrderStatus(order.id, { status: "PRINTING" });
+          setStatus("success");
+        } else {
+          throw new Error(data.error || "Erro desconhecido na impressora");
+        }
       } else {
-        throw new Error(data.error || "Erro desconhecido na impressora");
+        // Modo Produção (Nuvem): Envia para a fila de impressão no banco
+        const res = await fetch("/api/print", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: order.id,
+            imageUrl: base64Image,
+            duplex: false,
+            colorMode: printSettings.monochrome ? "Monochrome" : "Vivid",
+            dpi: `${printSettings.highDPI ? "600" : "300"}_${badgeOrientation}`
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          await updateOrderStatus(order.id, { status: "PRINTING" });
+          toast.success("Crachá enviado para a fila do Agente de Impressão!");
+          setStatus("success");
+        } else {
+          throw new Error(data.error || "Erro ao adicionar job na fila");
+        }
       }
+
+      // Volta para a lista após 3 segundos
+      setTimeout(() => {
+         window.location.href = "/admin/pedidos";
+      }, 3000);
     } catch (err: any) {
       console.error(err);
       setStatus("error");

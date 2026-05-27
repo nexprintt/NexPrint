@@ -18,6 +18,8 @@
 
 import { execSync, exec } from "child_process";
 import { promisify } from "util";
+import fs from "fs";
+import path from "path";
 
 const execAsync = promisify(exec);
 
@@ -260,19 +262,146 @@ async function processJobs() {
       status: "PRINTING",
     });
 
-    log("🖨️", `Imprimindo job ${job.id}...`);
+    log("🖨️", `Processando imagens do job ${job.id}...`);
 
-    // Montar argumentos de impressão
-    let printArgs = "";
-    if (job.duplex) printArgs += " -2";
-    printArgs += " -c"; // Job completion polling
-    printArgs += " -i 1"; // Hopper 1
-    printArgs += " -e"; // Check hopper
+    const tempDir = path.join(process.cwd(), "temp");
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
-    // Executar impressão
-    const printResult = executeSDK("print.exe", printArgs);
+    const tempFilePaths = [];
+    let images = [];
 
-    if (printResult.success) {
+    try {
+      // Tenta ler como array JSON (lote)
+      if (job.imageUrl && job.imageUrl.trim().startsWith("[")) {
+        images = JSON.parse(job.imageUrl);
+      } else if (job.imageUrl) {
+        images = [job.imageUrl];
+      }
+    } catch (e) {
+      // Fallback para string base64 simples
+      if (job.imageUrl) images = [job.imageUrl];
+    }
+
+    if (images.length === 0) {
+      throw new Error("Nenhuma imagem encontrada no job de impressao.");
+    }
+
+    images.forEach((imgBase64, index) => {
+      const base64Data = imgBase64.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      const tempImage = path.join(tempDir, `agent_${job.id}_${index}.png`);
+      fs.writeFileSync(tempImage, buffer);
+      tempFilePaths.push(tempImage.replace(/\\/g, "\\\\"));
+    });
+
+    // Fazer parse do campo dpi para extrair resolução e orientação
+    let isHighDPI = true;
+    let badgeOrientation = "landscape";
+    
+    if (job.dpi) {
+      const parts = job.dpi.split("_");
+      isHighDPI = parts[0] === "600";
+      if (parts[1]) badgeOrientation = parts[1];
+    }
+
+    log("🖨️", `Imprimindo ${tempFilePaths.length} imagem(ns) na ${CONFIG.PRINTER_NAME} (${isHighDPI ? "600" : "300"} DPI, ${badgeOrientation})...`);
+
+    // Script do PowerShell para impressão física
+    const pathsArrayPS = "@('" + tempFilePaths.join("','") + "')";
+    const desiredDPI = isHighDPI ? 600 : 300;
+
+    const psScript = `
+      Add-Type -AssemblyName System.Drawing;
+      Add-Type -AssemblyName System.Windows.Forms;
+      $printerName = "${CONFIG.PRINTER_NAME}";
+      $imagePaths = ${pathsArrayPS};
+      $script:currentIndex = 0;
+      
+      $doc = New-Object System.Drawing.Printing.PrintDocument;
+      $doc.PrinterSettings.PrinterName = $printerName;
+      
+      $targetPaperSize = $null;
+      foreach ($ps in $doc.PrinterSettings.PaperSizes) {
+        if ($ps.PaperName -eq "ISO ID-1 Retransfer" -or $ps.PaperName -eq "ISO ID-1 (85.60 x 53.98 mm)") {
+          $targetPaperSize = $ps;
+          break;
+        }
+      }
+      if ($targetPaperSize -ne $null) { $doc.DefaultPageSettings.PaperSize = $targetPaperSize; }
+      
+      $targetRes = $null;
+      foreach ($res in $doc.PrinterSettings.PrinterResolutions) {
+        if ($res.X -eq ${desiredDPI} -and $res.Y -eq ${desiredDPI}) { $targetRes = $res; break; }
+      }
+      if ($targetRes -ne $null) { 
+        $doc.DefaultPageSettings.PrinterResolution = $targetRes; 
+      } else {
+        $doc.DefaultPageSettings.PrinterResolution = $doc.PrinterSettings.PrinterResolutions[0];
+      }
+
+      $doc.DefaultPageSettings.Landscape = $("${badgeOrientation}" -eq "landscape");
+      $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0);
+      
+      $doc.add_PrintPage({
+        param($sender, $e);
+        
+        $currentPath = $imagePaths[$script:currentIndex];
+        $img = [System.Drawing.Image]::FromFile($currentPath);
+        $rect = New-Object System.Drawing.Rectangle(0, 0, $e.PageBounds.Width, $e.PageBounds.Height);
+        
+        $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic;
+        $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None;
+        $e.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality;
+        
+        $e.Graphics.DrawImage($img, $rect);
+        $img.Dispose();
+
+        $script:currentIndex++;
+        if ($script:currentIndex -lt $imagePaths.Count) {
+            $e.HasMorePages = $true;
+        } else {
+            $e.HasMorePages = $false;
+        }
+      });
+      
+      $doc.Print();
+    `;
+
+    // Executar o script PowerShell usando arquivo temporário .ps1 para evitar problemas de escape de aspas
+    const tempPs1Path = path.join(tempDir, `print_agent_batch_${job.id}.ps1`);
+    fs.writeFileSync(tempPs1Path, psScript, "utf-8");
+
+    let printSuccess = false;
+    let printError = "";
+
+    try {
+      const { stdout, stderr } = await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tempPs1Path}"`, { timeout: 120000 });
+      printSuccess = true;
+      log("✅", `Documento enviado ao Spooler do Windows.`);
+    } catch (err) {
+      printSuccess = false;
+      printError = err.message;
+      logError("Falha ao rodar script PowerShell de impressao", err);
+    } finally {
+      // Apaga o arquivo script .ps1 temporário
+      try {
+        if (fs.existsSync(tempPs1Path)) fs.unlinkSync(tempPs1Path);
+      } catch (err) {
+        logError(`Falha ao remover script ps1 temporario`, err);
+      }
+    }
+
+    // Limpar arquivos temporários criados em temp/
+    tempFilePaths.forEach(p => {
+      try {
+        const cleanPath = p.replace(/\\\\/g, "\\");
+        if (fs.existsSync(cleanPath)) fs.unlinkSync(cleanPath);
+      } catch (err) {
+        logError(`Falha ao remover arquivo temporario ${p}`, err);
+      }
+    });
+
+    if (printSuccess) {
       await apiRequest("/api/print", "PATCH", {
         id: job.id,
         status: "COMPLETED",
@@ -280,27 +409,26 @@ async function processJobs() {
       state.jobsCompleted++;
       log("✅", `Job ${job.id} CONCLUÍDO! (Total: ${state.jobsCompleted})`);
     } else {
-      // Tentativa de recovery
       const retryCount = (job.retryCount || 0) + 1;
 
       if (retryCount <= CONFIG.MAX_RETRY_COUNT) {
         log("🔄", `Job ${job.id} falhou. Tentando restart (${retryCount}/${CONFIG.MAX_RETRY_COUNT})...`);
         
-        // Tentar restart do job
+        // Tentar restart do hardware
         executeSDK("printer_control.exe", "-r");
         
         await apiRequest("/api/print", "PATCH", {
           id: job.id,
           status: "QUEUED",
           retryCount,
-          errorMsg: `Retry ${retryCount}: ${printResult.error}`,
+          errorMsg: `Retry ${retryCount}: ${printError}`,
         });
       } else {
         log("❌", `Job ${job.id} FALHOU após ${retryCount} tentativas.`);
         await apiRequest("/api/print", "PATCH", {
           id: job.id,
           status: "ERROR",
-          errorMsg: printResult.error,
+          errorMsg: printError,
         });
       }
     }

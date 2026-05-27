@@ -313,34 +313,66 @@ export default function OrdersTableClient({ initialOrders }: OrdersTableClientPr
     const ordersToPrint = initialOrders.filter(o => selectedIds.includes(o.id));
     setIsPrintingBatch(true);
     try {
-      const res = await fetch("/api/printer/control", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          action: "printBatch", 
-          value: batchImages,
-          orientation: ordersToPrint[0].template.configJson?.orientation || "landscape",
-          settings: batchSettings
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        // Se a opção estiver ativa, atualiza para "PRINTING" (Em Produção)
-        if (batchSettings.autoUpdateStatus) {
-          await bulkUpdateStatus(selectedIds, "PRINTING");
-        }
-        mutate('orders-list');
-        toast.success(`Sucesso! ${batchImages.length} crachás enviados para a Sigma.`);
-        setShowBatchPreview(false);
-        setIsBatching(false);
-        setBatchStep(0);
-        setBatchImages([]);
-        setSelectedIds([]);
-      } else {
-        toast.error("Erro na impressora: " + data.error);
+      let orientation = "landscape";
+      try {
+        const config = JSON.parse(ordersToPrint[0].customConfigJson || ordersToPrint[0].template.configJson || "{}");
+        if (config.orientation) orientation = config.orientation;
+      } catch (e) {
+        console.error("Erro ao ler orientacao para impressao em lote:", e);
       }
-    } catch (err) {
-      toast.error("Erro ao conectar com a impressora.");
+
+      const isLocalhost = typeof window !== "undefined" && 
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+      if (isLocalhost) {
+        const res = await fetch("/api/printer/control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            action: "printBatch", 
+            value: batchImages,
+            orientation: orientation,
+            settings: batchSettings
+          })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || "Erro na impressora");
+        }
+      } else {
+        // Modo Produção (Nuvem): Envia o lote para a fila de impressão no banco
+        const res = await fetch("/api/print", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: ordersToPrint[0].id,
+            imageUrl: JSON.stringify(batchImages), // Array serializado em JSON
+            duplex: false,
+            colorMode: batchSettings.monochrome ? "Monochrome" : "Vivid",
+            dpi: `${batchSettings.highDPI ? "600" : "300"}_${orientation}`
+          })
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Erro ao adicionar lote na fila");
+        }
+        toast.info("Lote de crachás enviado para a fila do Agente de Impressão!");
+      }
+
+      // Se a opção estiver ativa, atualiza para "PRINTING" (Em Produção)
+      if (batchSettings.autoUpdateStatus) {
+        await bulkUpdateStatus(selectedIds, "PRINTING");
+      }
+      mutate('orders-list');
+      toast.success(`Sucesso! ${batchImages.length} crachás enviados.`);
+      setShowBatchPreview(false);
+      setIsBatching(false);
+      setBatchStep(0);
+      setBatchImages([]);
+      setSelectedIds([]);
+    } catch (err: any) {
+      toast.error("Erro no lote: " + err.message);
     } finally {
       setIsPrintingBatch(false);
     }
@@ -486,7 +518,14 @@ export default function OrdersTableClient({ initialOrders }: OrdersTableClientPr
             congregation={currentBatchOrder.congregation || ""}
             photoUrl={currentBatchOrder.photoUrl}
             bgImageUrl={currentBatchOrder.template.bgImageUrl}
-            orientation={currentBatchOrder.template.configJson?.orientation || "landscape"}
+            orientation={(() => {
+              try {
+                const config = JSON.parse(currentBatchOrder.customConfigJson || currentBatchOrder.template.configJson || "{}");
+                return config.orientation || "landscape";
+              } catch {
+                return "landscape";
+              }
+            })()}
             config={JSON.parse(currentBatchOrder.customConfigJson || currentBatchOrder.template.configJson || "{}")}
             onReady={handleCanvasReady}
           />

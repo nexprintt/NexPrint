@@ -1,8 +1,7 @@
 -- 🔒 Políticas de Segurança (RLS) para o Supabase Storage
 -- Copie e cole este código no "SQL Editor" do painel do seu Supabase e clique em RUN.
 
--- 1. Habilitar RLS na tabela de objetos do Storage (se ainda não estiver)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- 1. (Removido: RLS já vem habilitado por padrão no Supabase para a tabela storage.objects)
 
 -- 2. Política para permitir UPLOAD (Insert)
 -- Permite uploads APENAS no bucket 'badges'

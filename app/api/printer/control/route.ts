@@ -98,8 +98,7 @@ export async function POST(request: Request) {
           const badgeOrientation = body.orientation || "landscape";
           const settings = body.settings || { highDPI: true, monochrome: false };
           const images: string[] = Array.isArray(value) ? value : [value];
-          
-          // Caminho temporário para as imagens
+                // Caminho temporário para as imagens
           const tempDir = path.join(process.cwd(), "temp");
           const fs = require("fs");
           if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
@@ -166,7 +165,7 @@ export async function POST(request: Request) {
               
               $e.Graphics.DrawImage($img, $rect);
               $img.Dispose();
-
+ 
               # SEGUNDO SEGREDO: Incrementar o índice e dizer se tem mais páginas
               $script:currentIndex++;
               if ($script:currentIndex -lt $imagePaths.Count) {
@@ -179,7 +178,31 @@ export async function POST(request: Request) {
             $doc.Print();
           `;
 
-          const { stdout: pOut, stderr: pErr } = await execFileAsync("powershell", ["-Command", psScript], { timeout: 120000 });
+          // Criação do arquivo .ps1 temporário para evitar erros de escape na linha de comando
+          const tempPs1Path = path.join(tempDir, `print_batch_${Date.now()}.ps1`);
+          fs.writeFileSync(tempPs1Path, psScript, "utf-8");
+
+          try {
+            await execFileAsync("powershell", [
+              "-NoProfile",
+              "-ExecutionPolicy", "Bypass",
+              "-File", tempPs1Path
+            ], { timeout: 120000 });
+          } finally {
+            // Apaga o arquivo script .ps1 temporário
+            if (fs.existsSync(tempPs1Path)) {
+              fs.unlinkSync(tempPs1Path);
+            }
+            // Limpa as imagens temporárias geradas
+            tempFilePaths.forEach(p => {
+              try {
+                const cleanPath = p.replace(/\\\\/g, "\\");
+                if (fs.existsSync(cleanPath)) fs.unlinkSync(cleanPath);
+              } catch (err) {
+                console.error(`Falha ao remover arquivo temporario ${p}:`, err);
+              }
+            });
+          }
           
           return NextResponse.json({ 
             success: true, 
