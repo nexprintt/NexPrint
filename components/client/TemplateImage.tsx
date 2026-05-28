@@ -12,6 +12,7 @@ interface TemplateImageProps {
 export default function TemplateImage({ src, alt, className = "", fill = false }: TemplateImageProps) {
   const isPdf = src.toLowerCase().endsWith(".pdf") || src.startsWith("data:application/pdf");
   const [pdfImageUrl, setPdfImageUrl] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (!isPdf) return;
@@ -19,6 +20,7 @@ export default function TemplateImage({ src, alt, className = "", fill = false }
 
     const renderPdf = async () => {
       try {
+        setHasError(false);
         if (!(window as any).pdfjsLib) {
           await new Promise((resolve, reject) => {
             const script = document.createElement("script");
@@ -58,6 +60,9 @@ export default function TemplateImage({ src, alt, className = "", fill = false }
         }
       } catch (err) {
         console.error("Erro ao renderizar PDF thumbnail:", err);
+        if (!cancelled) {
+          setHasError(true);
+        }
       }
     };
 
@@ -66,6 +71,21 @@ export default function TemplateImage({ src, alt, className = "", fill = false }
   }, [src, isPdf]);
 
   if (isPdf) {
+    if (hasError) {
+      return (
+        <div className={`relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border-b border-slate-700/50 p-6 ${fill ? "absolute inset-0" : ""}`}>
+          <div className="w-12 h-12 bg-brand-teal/10 rounded-2xl flex items-center justify-center text-brand-teal mb-3 shadow-inner">
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <p className="text-[10px] font-black text-brand-teal uppercase tracking-widest text-center">{alt}</p>
+          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Criar pedido mesmo assim</p>
+        </div>
+      );
+    }
+
     if (!pdfImageUrl) {
       return (
         <div className={`relative w-full h-full flex items-center justify-center bg-slate-800 ${fill ? "absolute inset-0" : ""}`}>
