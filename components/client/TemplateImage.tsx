@@ -36,7 +36,21 @@ export default function TemplateImage({ src, alt, className = "", fill = false }
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-        const pdf = await pdfjsLib.getDocument(src).promise;
+        let pdfParams: any;
+        if (src.startsWith("data:application/pdf;base64,")) {
+          const base64Content = src.split(",")[1];
+          const binaryString = window.atob(base64Content);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          pdfParams = { data: bytes };
+        } else {
+          pdfParams = { url: src };
+        }
+
+        const pdf = await pdfjsLib.getDocument(pdfParams).promise;
         const page = await pdf.getPage(1);
 
         // Mesma lógica de rotação do BadgeCanvas:
@@ -81,7 +95,7 @@ export default function TemplateImage({ src, alt, className = "", fill = false }
             </svg>
           </div>
           <p className="text-[10px] font-black text-brand-teal uppercase tracking-widest text-center">{alt}</p>
-          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Criar pedido mesmo assim</p>
+          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Modelo PDF • Clique para prosseguir</p>
         </div>
       );
     }
